@@ -15,6 +15,7 @@ pub enum Command {
     Ping,
     Mode,
     Pong,
+    Pass,
     Numeric(u32),
     Unknown(String)
 }
@@ -74,6 +75,7 @@ impl FromStr for Command {
             "QUIT" => Ok(Command::Quit),
             "PING" => Ok(Command::Ping),
             "MODE" => Ok(Command::Mode),
+            "PASS" => Ok(Command::Pass),
             _ => Ok(Command::Unknown(s.to_string()))
         }
     }
