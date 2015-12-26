@@ -9,7 +9,31 @@ use std::thread;
 
 struct IrcHandler {
     server: irc::streams::Server,
-    clients: Vec<irc::streams::Client>,
+}
+
+struct ClientHandler {
+    client: irc::streams::Client,
+}
+
+impl ClientHandler {
+    pub fn new(client: irc::streams::Client) -> Self {
+        ClientHandler {
+            client: client,
+        }
+    }
+}
+
+impl Handler for ClientHandler {
+    type Timeout = ();
+    type Message = ();
+
+    fn ready(&mut self, event_loop: &mut EventLoop<ClientHandler>, token: Token, _: EventSet) {
+        match token {
+            CLIENT =>
+                bridge::handle_client(&mut self.client),
+            _ => unreachable!()
+        }
+    }
 }
 
 impl Handler for IrcHandler {
@@ -21,24 +45,24 @@ impl Handler for IrcHandler {
             SERVER => {
                 match self.server.accept() {
                     Some(client) => {
-                        event_loop.register(client.stream(), client.token(), EventSet::readable() | EventSet::hup(), PollOpt::edge()).unwrap();
-                        self.clients.push(client);
+                        thread::spawn(move||{
+                            let mut events = EventLoop::new().unwrap();
+                            events.register(client.stream(), CLIENT, EventSet::all(), PollOpt::edge()).unwrap();
+                            events.run(&mut ClientHandler {
+                                client: client
+                            }).unwrap();
+                        });
                     },
                     None => ()
                 }
             },
-            _ => {
-                for ref mut c in &mut self.clients {
-                    if c.token() == token {
-                        bridge::handle_client(c);
-                    }
-                }
-            },
+            _ => unreachable!()
         }
     }
 }
 
 const SERVER: Token = Token(0);
+const CLIENT: Token = Token(1);
 
 fn main() {
     let addr = "127.0.0.1:8001".parse().unwrap();
@@ -48,6 +72,5 @@ fn main() {
     events.register(server.listener(), SERVER, EventSet::all(), PollOpt::edge()).unwrap();
     events.run(&mut IrcHandler{
         server: server,
-        clients: vec![]
     }).unwrap();
 }

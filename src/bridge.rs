@@ -17,7 +17,7 @@ pub fn handle_client(client: &mut irc::streams::Client) {
             let auth = client.auth.consume();
             client.matrix.login(auth.username.unwrap().trim(), auth.password.unwrap().trim());
             client.welcome("Welcome!");
-            matrix_client.sync();
+            client.matrix.sync();
         },
         Command::Join => {
             client.join(&message.args[0]);

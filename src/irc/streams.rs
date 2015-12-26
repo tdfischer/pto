@@ -14,26 +14,20 @@ pub struct Client {
     line_reader: LineReader,
     nickname: Option<String>,
     username: Option<String>,
-    token: Token,
     pub auth: AuthSession,
     pub matrix: matrix::Client
 }
 
 impl Client {
-    pub fn new(stream: TcpStream, token: Token) -> Self {
+    pub fn new(stream: TcpStream) -> Self {
         Client {
             stream: stream,
             line_reader: LineReader::new(),
             nickname: None,
             username: None,
-            token: token,
             auth: AuthSession::new(),
             matrix: matrix::Client::new()
         }
-    }
-
-    pub fn token(&self) -> Token {
-        self.token
     }
 
     pub fn stream(&self) -> &TcpStream {
@@ -92,25 +86,20 @@ impl Client {
 
 pub struct Server {
     listener: TcpListener,
-    nextToken: usize
 }
 
 impl Server {
     pub fn new(addr: &SocketAddr) -> Self {
         Server {
             listener: TcpListener::bind(addr).unwrap(),
-            nextToken: 1
         }
     }
 
     pub fn accept(&mut self) -> Option<Client> {
          match self.listener.accept() {
              Ok(None) => None,
-             Ok(Some((socket, _))) => {
-                 let token = self.nextToken;
-                 self.nextToken += 1;
-                 Some(Client::new(socket, Token(token)))
-             }
+             Ok(Some((socket, _))) =>
+                 Some(Client::new(socket)),
              Err(e) => panic!(e),
          }
     }
