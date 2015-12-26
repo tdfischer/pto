@@ -6,7 +6,6 @@ use std::io::Write;
 use irc::util::LineReader;
 use irc::protocol::*;
 use irc::security::AuthSession;
-use matrix;
 
 #[derive(Debug)]
 pub struct Client {
@@ -15,7 +14,6 @@ pub struct Client {
     nickname: Option<String>,
     username: Option<String>,
     pub auth: AuthSession,
-    pub matrix: matrix::Client
 }
 
 impl Client {
@@ -26,7 +24,6 @@ impl Client {
             nickname: None,
             username: None,
             auth: AuthSession::new(),
-            matrix: matrix::Client::new()
         }
     }
 
