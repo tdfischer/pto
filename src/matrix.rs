@@ -4,6 +4,7 @@ use hyper;
 use hyper::status::StatusCode;
 use rustc_serialize::json::Json;
 use rustc_serialize::json;
+use std::fmt;
 
 #[derive(Clone)]
 pub struct AccessToken {
@@ -14,6 +15,12 @@ pub struct AccessToken {
 pub struct Client {
     http: hyper::Client,
     token: Option<AccessToken>
+}
+
+impl fmt::Debug for Client {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
+    }
 }
 
 impl Client {

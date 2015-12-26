@@ -1,54 +1,53 @@
 extern crate rustc_serialize;
 extern crate hyper;
+extern crate mio;
 mod irc;
 mod matrix;
+mod bridge;
+use mio::{EventLoop,Handler,Token,EventSet,PollOpt};
 use std::thread;
 
-fn handle_client(mut client: irc::Client) {
-    let mut matrix_client = matrix::Client::new();
-    let mut password: Option<String> = None;
-    let mut username: Option<String> = None;
-    loop {
-        let message = client.read_message().unwrap();
-        println!("Got a message! {:?}", message);
-        match message.command {
-            irc::Command::Pass => {
-                password = Some(message.args[0].clone());
-            }
-            irc::Command::Nick => {
-                client.set_nickname(message.args[0].clone());
+struct IrcHandler {
+    server: irc::streams::Server,
+    clients: Vec<irc::streams::Client>,
+}
+
+impl Handler for IrcHandler {
+    type Timeout = ();
+    type Message = ();
+
+    fn ready(&mut self, event_loop: &mut EventLoop<IrcHandler>, token: Token, _: EventSet) {
+        match token {
+            SERVER => {
+                match self.server.accept() {
+                    Some(client) => {
+                        event_loop.register(client.stream(), client.token(), EventSet::readable() | EventSet::hup(), PollOpt::edge()).unwrap();
+                        self.clients.push(client);
+                    },
+                    None => ()
+                }
             },
-            irc::Command::User => {
-                println!("User logged in: {}", message.args[0]);
-                client.set_username(message.args[0].clone());
-                username = Some(message.args[0].clone());
-                matrix_client.login(username.unwrap().trim(), password.clone().unwrap().trim());
-                password = None;
-                client.welcome("Welcome!");
-                matrix_client.sync();
+            _ => {
+                for ref mut c in &mut self.clients {
+                    if c.token() == token {
+                        bridge::handle_client(c);
+                    }
+                }
             },
-            irc::Command::Join => {
-                client.join(&message.args[0]);
-            },
-            irc::Command::Ping => {
-                client.pong();
-            },
-            irc::Command::Quit => {
-                return;
-            },
-            _ =>
-                println!("unhandled {:?}", message)
         }
     }
 }
 
+const SERVER: Token = Token(0);
+
 fn main() {
-    let server = irc::IrcServer::new();
+    let addr = "127.0.0.1:8001".parse().unwrap();
+    let server = irc::streams::Server::new(&addr);
     println!("Listening on 127.0.0.1:8001");
-    for client in server.iter_new_clients() {
-        println!("Got a client! {:?}", client);
-        thread::spawn(move|| {
-            handle_client(client)
-        });
-    }
+    let mut events = EventLoop::new().unwrap();
+    events.register(server.listener(), SERVER, EventSet::all(), PollOpt::edge()).unwrap();
+    events.run(&mut IrcHandler{
+        server: server,
+        clients: vec![]
+    }).unwrap();
 }

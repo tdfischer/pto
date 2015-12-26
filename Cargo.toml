@@ -6,3 +6,4 @@ authors = ["Torrie Fischer <tdfischer@hackerbots.net>"]
 [dependencies]
 hyper = '*'
 rustc-serialize = '*'
+mio = '*'
