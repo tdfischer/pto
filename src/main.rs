@@ -6,34 +6,10 @@ mod matrix;
 mod bridge;
 use mio::{EventLoop,Handler,Token,EventSet,PollOpt};
 use std::thread;
+use bridge::Bridge;
 
 struct IrcHandler {
     server: irc::streams::Server,
-}
-
-struct ClientHandler {
-    client: irc::streams::Client,
-}
-
-impl ClientHandler {
-    pub fn new(client: irc::streams::Client) -> Self {
-        ClientHandler {
-            client: client,
-        }
-    }
-}
-
-impl Handler for ClientHandler {
-    type Timeout = ();
-    type Message = ();
-
-    fn ready(&mut self, event_loop: &mut EventLoop<ClientHandler>, token: Token, _: EventSet) {
-        match token {
-            CLIENT =>
-                bridge::handle_client(&mut self.client),
-            _ => unreachable!()
-        }
-    }
 }
 
 impl Handler for IrcHandler {
@@ -46,11 +22,8 @@ impl Handler for IrcHandler {
                 match self.server.accept() {
                     Some(client) => {
                         thread::spawn(move||{
-                            let mut events = EventLoop::new().unwrap();
-                            events.register(client.stream(), CLIENT, EventSet::all(), PollOpt::edge()).unwrap();
-                            events.run(&mut ClientHandler {
-                                client: client
-                            }).unwrap();
+                            let mut bridge = Bridge::new(client);
+                            bridge.run()
                         });
                     },
                     None => ()
@@ -62,7 +35,6 @@ impl Handler for IrcHandler {
 }
 
 const SERVER: Token = Token(0);
-const CLIENT: Token = Token(1);
 
 fn main() {
     let addr = "127.0.0.1:8001".parse().unwrap();
