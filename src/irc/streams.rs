@@ -35,19 +35,23 @@ impl Client {
     }
 
     pub fn read_message(&mut self) -> Option<Message> {
-        let line = self.line_reader.read(&mut self.stream).unwrap();
-        let split: Vec<&str> = line.split(" ").collect();
-        let mut args = Vec::new();
-        for s in split[1..].iter() {
-            args.push(s.to_string());
+        match self.line_reader.read(&mut self.stream) {
+            Some(line) => {
+                let split: Vec<&str> = line.split(" ").collect();
+                let mut args = Vec::new();
+                for s in split[1..].iter() {
+                    args.push(s.to_string());
+                }
+                let parsedCommand: Result<Command, Command> = split[0].parse();
+                Some(Message{
+                    prefix: None,
+                    command: parsedCommand.ok().unwrap(),
+                    args: args,
+                    suffix: None
+                })
+            },
+            None => None
         }
-        let parsedCommand: Result<Command, Command> = split[0].parse();
-        Some(Message{
-            prefix: None,
-            command: parsedCommand.ok().unwrap(),
-            args: args,
-            suffix: None
-        })
     }
 
     pub fn set_nickname(&mut self, nickname: String) {
