@@ -1,27 +1,36 @@
 use irc;
 use matrix;
-use irc::protocol::Command;
-use mio::{EventLoop,Handler,Token,EventSet,PollOpt};
+use irc::protocol::{Command,Message};
+use mio::{EventLoop,Handler,Token,EventSet,PollOpt,Sender};
+use std::thread;
 
-const CLIENT: Token = Token(1);
+const CLIENT: Token = Token(0);
+const MATRIX: Token = Token(1);
 
 pub struct Bridge {
     client: irc::streams::Client,
-    matrix: matrix::Client
+    matrix: matrix::Client,
 }
 
 impl Handler for Bridge {
     type Timeout = ();
-    type Message = ();
+    type Message = irc::protocol::Message;
 
     fn ready(&mut self, event_loop: &mut EventLoop<Bridge>, token: Token, _: EventSet) {
         match token {
             CLIENT =>
-                self.handle_client(),
+                self.handle_client(event_loop),
             _ => unreachable!()
         }
     }
+
+    fn notify(&mut self, event_loop: &mut EventLoop<Bridge>, msg: Self::Message) {
+        println!("Got message from matrix! {:?}", msg);
+        self.client.send(&msg);
+    }
 }
+
+unsafe impl Sync for Bridge{}
 
 impl Bridge {
     pub fn new(client: irc::streams::Client) -> Self {
@@ -37,7 +46,7 @@ impl Bridge {
         events.run(self).unwrap();
     }
 
-    fn handle_client(&mut self) {
+    fn handle_client(&mut self, events: &mut EventLoop<Bridge>) {
         loop {
             match self.client.read_message() {
                 None => return,
@@ -58,7 +67,8 @@ impl Bridge {
                                 (Some(username), Some(password)) => {
                                     self.matrix.login(username.trim(), password.trim());
                                     self.client.welcome("Welcome!");
-                                    self.matrix.sync();
+                                    self.matrix.sync(events.channel());
+                                    self.matrix.pollAsync(events.channel());
                                     println!("Logged in {:?}", username);
                                 },
                                 _ => panic!("Username and/or password missing")

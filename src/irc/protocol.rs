@@ -82,5 +82,3 @@ pub struct Message {
     pub args: Vec<String>,
     pub suffix: Option<String>
 }
-
-
