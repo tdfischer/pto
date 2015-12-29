@@ -4,6 +4,7 @@ use hyper;
 use hyper::status::StatusCode;
 use rustc_serialize::json::Json;
 use rustc_serialize::json;
+use std::collections::HashMap;
 use std::fmt;
 use std::thread;
 use mio;
@@ -40,7 +41,7 @@ impl Client {
         d.insert("password".to_string(), Json::String(password.to_string()));
         d.insert("type".to_string(), Json::String("m.login.password".to_string()));
         println!("Logging in to matrix");
-        let mut res = self.http.post("https://oob.systems/_matrix/client/api/v1/login")
+        let mut res = self.http.post(self.url("login", &HashMap::new()))
             .body(Json::Object(d).to_string().trim()).send().unwrap();
         assert_eq!(res.status, StatusCode::Ok);
         let mut response = String::new();
@@ -58,13 +59,34 @@ impl Client {
         }
     }
 
+    fn url(&self, endpoint: &str, args: &HashMap<&str, &str>) -> hyper::Url {
+        let mut ret = "https://oob.systems/_matrix/client/api/v1/".to_string();
+        ret.push_str(endpoint);
+        ret.push_str("?");
+        match self.token {
+            None => (),
+            Some(ref token) => {
+                ret.push_str("access_token=");
+                ret.push_str(token.access.trim());
+                ret.push_str("&");
+            }
+        }
+        for (name, value) in args {
+            ret.push_str(name);
+            ret.push_str("=");
+            ret.push_str(value);
+            ret.push_str("&");
+        }
+        hyper::Url::parse(ret.trim()).unwrap()
+    }
+
     pub fn pollAsync(&mut self, channel: mio::Sender<irc::protocol::Message>) {
-        let url = "https://oob.systems/_matrix/client/api/v1/events?access_token=".to_string() + &self.token.clone().unwrap().access;
+        let url = self.url("events", &HashMap::new());
         println!("poll?");
         let http = hyper::Client::new();
         thread::spawn(move||{
             println!("Pulling {:?}", url);
-            let mut res = http.get(url.trim()).send().unwrap();
+            let mut res = http.get(url).send().unwrap();
 
             let msg = irc::protocol::Message {
                 command: irc::protocol::Command::Join,
@@ -78,8 +100,10 @@ impl Client {
 
     pub fn sync(&mut self, channel: mio::Sender<irc::protocol::Message>) {
         println!("Syncing...");
-        let mut res = self.http.get(("https://oob.systems/_matrix/client/api/v1/initialSync?limit=0&access_token=".to_string() + &self.token.clone().unwrap().access).trim())
-            .send().unwrap();
+        let mut args = HashMap::new();
+        args.insert("limit", "0");
+        let url = self.url("initialSync", &args);
+        let mut res = self.http.get(url).send().unwrap();
         let mut response = String::new();
         res.read_to_string(&mut response);
         match Json::from_str(response.trim()) {
