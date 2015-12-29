@@ -9,7 +9,7 @@ const MATRIX: Token = Token(1);
 
 pub struct Bridge {
     client: irc::streams::Client,
-    matrix: matrix::Client,
+    matrix: matrix::client::Client,
 }
 
 impl Handler for Bridge {
@@ -36,7 +36,7 @@ impl Bridge {
     pub fn new(client: irc::streams::Client) -> Self {
         Bridge {
             client: client,
-            matrix: matrix::Client::new()
+            matrix: matrix::client::Client::new()
         }
     }
 
