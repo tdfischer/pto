@@ -9,6 +9,7 @@ use std::fmt;
 use std::thread;
 use mio;
 use irc;
+use matrix::json as mjson;
 
 #[derive(Clone)]
 pub struct AccessToken {
@@ -49,7 +50,6 @@ impl Client {
         match Json::from_str(response.trim()) {
             Ok(js) => {
                 let obj = js.as_object().unwrap();
-                println!("decode: {:?}", obj);
                 self.token = Some(AccessToken {
                     access: obj.get("access_token").unwrap().as_string().unwrap().to_string(),
                     refresh: obj.get("refresh_token").unwrap().as_string().unwrap().to_string()
@@ -82,10 +82,8 @@ impl Client {
 
     pub fn pollAsync(&mut self, channel: mio::Sender<irc::protocol::Message>) {
         let url = self.url("events", &HashMap::new());
-        println!("poll?");
         let http = hyper::Client::new();
         thread::spawn(move||{
-            println!("Pulling {:?}", url);
             let mut res = http.get(url).send().unwrap();
 
             let msg = irc::protocol::Message {
@@ -108,18 +106,15 @@ impl Client {
         res.read_to_string(&mut response);
         match Json::from_str(response.trim()) {
             Ok(js) => {
-                let obj = js.as_object().unwrap();
-                let rooms = obj.get("rooms").unwrap().as_array().unwrap();
+                let rooms = mjson::array(&js, "rooms");
                 for r in rooms {
-                    let room = r.as_object().unwrap();
-                    let roomState = room.get("state").unwrap().as_array().unwrap();
-                    let mut roomName: Option<String> = None;
+                    let roomState = mjson::array(r, "state");
+                    let mut roomName: Option<&str> = None;
                     for ref s in roomState {
-                        let state = s.as_object().unwrap();
-                        match state.get("type").unwrap().as_string() {
-                            Some("m.room.canonical_alias") => {
-                                println!("alias! {:?}", state);
-                                roomName = Some(state.get("content").unwrap().as_object().unwrap().get("alias").unwrap().as_string().unwrap().to_string());
+                        let state = mjson::string(s, "type").trim();
+                        match state {
+                            "m.room.canonical_alias" => {
+                                roomName = Some(mjson::string(s, "content.alias"));
                             },
                             _ => ()
                         };
@@ -130,12 +125,11 @@ impl Client {
                     let msg = irc::protocol::Message {
                         command: irc::protocol::Command::Join,
                         prefix: Some("tdfischer!tdfischer@anony.oob".to_string()),
-                        args: vec![roomName.unwrap()],
+                        args: vec![roomName.unwrap().to_string()],
                         suffix: None
                     };
                     channel.send(msg);
                 }
-                println!("State: {:?}", obj);
             },
             Err(e) => panic!(e)
         }
