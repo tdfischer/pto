@@ -10,18 +10,25 @@ pub enum Command {
     Mode,
     Pong,
     Pass,
+    Privmsg,
     Numeric(u32),
     Unknown(String)
 }
 
 impl Command {
-    pub fn as_str(&self) -> &'static str {
-        match *self {
-            Command::Nick => "NICK",
-            Command::Join => "JOIN",
-            Command::Pong => "PONG",
-            Command::Numeric(1) => "001",
-            _ => ""
+    pub fn as_string(&self) -> String {
+        match self {
+            &Command::Nick => "NICK".to_string(),
+            &Command::Join => "JOIN".to_string(),
+            &Command::Pong => "PONG".to_string(),
+            &Command::Privmsg => "PRIVMSG".to_string(),
+            &Command::User => "USER".to_string(),
+            &Command::Quit => "QUIT".to_string(),
+            &Command::Ping => "PING".to_string(),
+            &Command::Mode => "MODE".to_string(),
+            &Command::Pass => "PASS".to_string(),
+            &Command::Numeric(n)=> format!("{:3?}", n),
+            &Command::Unknown(ref s) => s.clone()
         }
     }
 }
@@ -37,7 +44,7 @@ impl Message {
             },
             None => ()
         };
-        ret.push_str(self.command.as_str());
+        ret.push_str(self.command.as_string().trim());
         for ref arg in self.args.iter() {
             ret.push(' ');
             ret.push_str(arg.trim());
