@@ -27,7 +27,7 @@ impl Command {
             &Command::Ping => "PING".to_string(),
             &Command::Mode => "MODE".to_string(),
             &Command::Pass => "PASS".to_string(),
-            &Command::Numeric(n)=> format!("{:3?}", n),
+            &Command::Numeric(n)=> format!("{:0>3}", n),
             &Command::Unknown(ref s) => s.clone()
         }
     }
