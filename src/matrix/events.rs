@@ -33,6 +33,7 @@ impl RoomID {
     }
 }
 
+#[derive(Debug)]
 pub enum MembershipAction {
     Join
 }
@@ -46,6 +47,7 @@ impl MembershipAction {
     }
 }
 
+#[derive(Debug)]
 pub enum RoomEvent {
     CanonicalAlias(String),
     JoinRules(String),
@@ -56,30 +58,61 @@ pub enum RoomEvent {
     PowerLevels
 }
 
+#[derive(Debug)]
 pub enum TextEvent {
     RoomMessage(UserID, RoomID, String)
 }
 
+#[derive(Debug)]
+pub struct TypingEvent {
+    pub users: Vec<UserID>,
+    pub room: RoomID,
+}
+
+#[derive(Debug)]
 pub enum EventData {
     Room(RoomID, RoomEvent),
     Text(TextEvent),
+    Typing(TypingEvent),
+    Presence(PresenceEvent)
 }
 
+#[derive(Debug)]
 pub struct Event {
-    pub id: String,
+    pub id: Option<String>,
     pub data: EventData
+}
+
+#[derive(Debug)]
+pub struct PresenceEvent {
+    pub presence: String,
+    pub user: UserID
 }
 
 impl Event {
     pub fn from_json(json: &Json) -> Self {
         let tokens: Vec<&str> = mjson::string(json, "type").trim().split(".").collect();
         assert!(tokens[0] == "m");
+        let id = match json.as_object().unwrap().get("event_id") {
+            Some(i) => Some(i.as_string().unwrap().to_string()),
+            None => None
+        };
         Event {
-            id: mjson::string(json, "event_id").to_string(),
+            id: id,
             data: match tokens[1] {
                 "room" =>
                     Self::from_room_json(tokens[2], json),
-                e => panic!("Unknown event {:?}!", e)
+                "typing" =>
+                    EventData::Typing(TypingEvent {
+                        users: vec![],
+                        room: RoomID::from_str(mjson::string(json, "room_id"))
+                    }),
+                "presence" =>
+                    EventData::Presence(PresenceEvent{
+                        presence: mjson::string(json, "content.presence").to_string(),
+                        user: UserID::from_str(mjson::string(json, "content.user_id"))
+                    }),
+                e => panic!("Unknown event {:?}!\nRaw JSON: {:?}", e, json)
             }
         }
     }
