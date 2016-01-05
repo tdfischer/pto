@@ -1,4 +1,4 @@
-# Power Take-Off
+# Perpetually Talking Online
 
 An IRC to Matrix bridge.
 
@@ -21,3 +21,42 @@ such as kicks, bans, topics, etc.
 
 This provides a *super* low level interface to onboarding new users to an
 existing (or new!) Matrix community.
+
+## Building this sucker
+
+You'll need the following ingredients: 
+
+- Rust >= 1.5.0: https://www.rust-lang.org/
+- Cargo (any recent)
+
+Once those two are installed, you can build PTO as follows:
+
+$ cargo build
+
+PTO can then be ran:
+
+$ cargo run
+
+Or the appropriate binary named ./target/*/pto
+
+## Configuration
+
+Currently configuration is limited to modifying hardcoded strings in various
+places. Thank you for getting this far though! I would absolutely love a patch
+<3
+
+## Usage
+
+By default, PTO will listen on localhost:8001 for an IRC client to connect with
+an appropriate username and password. The username and password supplied through
+the IRC connection will be used to login to matrix.
+
+# TODO
+
+This whole thing is intensely a work in progress. It doesn't even do anything
+useful right now like handling messages or even listing channels.
+
+- [X] Handle IRC protocol
+- [X] Login to matrix
+- [ ] Handle matrix event polling without blocking IRC thread
+- [ ] Translate IRC events to matrix events and vice-versa
