@@ -77,6 +77,7 @@ impl FromStr for Command {
             "PING" => Ok(Command::Ping),
             "MODE" => Ok(Command::Mode),
             "PASS" => Ok(Command::Pass),
+            "PRIVMSG" => Ok(Command::Privmsg),
             _ => Ok(Command::Unknown(s.to_string()))
         }
     }
