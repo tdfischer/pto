@@ -96,6 +96,13 @@ impl Client {
         self.nickname = Some(nickname);
     }
 
+    pub fn nickname(&self) -> Option<&String> {
+        match self.nickname {
+            None => None,
+            Some(ref s) => Some(s)
+        }
+    }
+
     pub fn join(&mut self, channel: &str) {
         let pfx = self.nickname.clone().unwrap();
         self.send(&Message {
