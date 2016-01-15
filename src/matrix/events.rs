@@ -1,5 +1,7 @@
 use rustc_serialize::json::Json;
+use rustc_serialize::json;
 use matrix::json as mjson;
+use std::fmt;
 
 #[derive(Clone, Debug)]
 pub struct UserID {
@@ -21,6 +23,12 @@ impl UserID {
 pub struct RoomID {
     pub id: String,
     pub homeserver: String
+}
+
+impl fmt::Display for RoomID {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "!{}:{}", self.id, self.homeserver)
+    }
 }
 
 impl RoomID {
@@ -55,6 +63,7 @@ pub enum RoomEvent {
     HistoryVisibility(String),
     Create,
     Aliases,
+    Message(UserID, String),
     PowerLevels
 }
 
@@ -72,9 +81,36 @@ pub struct TypingEvent {
 #[derive(Debug)]
 pub enum EventData {
     Room(RoomID, RoomEvent),
-    Text(TextEvent),
     Typing(TypingEvent),
     Presence(PresenceEvent)
+}
+
+impl EventData {
+    pub fn type_str(&self) -> &'static str {
+        match self {
+            &EventData::Room(_, RoomEvent::Message(_, _)) => {
+                "m.room.message"
+            },
+            _ => unreachable!()
+        }
+    }
+
+    pub fn to_json(&self) -> json::Json {
+        let mut ret = json::Object::new();
+        match self {
+            &EventData::Room(ref id, ref evt) => {
+                match evt {
+                    &RoomEvent::Message(ref sender, ref text) => {
+                        ret.insert("msgtype".to_string(), json::Json::String("m.text".to_string()));
+                        ret.insert("body".to_string(), json::Json::String(text.clone()));
+                    },
+                    _ => unreachable!()
+                }
+            },
+            _ => unreachable!()
+        }
+        json::Json::Object(ret)
+    }
 }
 
 #[derive(Debug)]
