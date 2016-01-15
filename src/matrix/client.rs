@@ -147,9 +147,9 @@ impl Client {
         let mut response = String::new();
         res.read_to_string(&mut response);
         match Json::from_str(response.trim()) {
-            Ok(js) => {
-                let rooms = mjson::array(&js, "rooms");
-                for r in rooms {
+            Ok(ref js) => {
+                let rooms = mjson::array(js, "rooms");
+                for ref r in rooms {
                     let roomState = mjson::array(r, "state");
                     let mut roomName: Option<String> = None;
                     for ref evt in roomState {
