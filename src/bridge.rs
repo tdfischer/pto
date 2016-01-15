@@ -9,6 +9,12 @@ use std::collections::HashMap;
 const CLIENT: Token = Token(0);
 const MATRIX: Token = Token(1);
 
+#[derive(Debug)]
+pub enum Event {
+    EndPoll,
+    Matrix(matrix::events::Event)
+}
+
 pub struct Bridge {
     client: irc::streams::Client,
     matrix: matrix::client::Client,
@@ -17,7 +23,7 @@ pub struct Bridge {
 
 impl Handler for Bridge {
     type Timeout = ();
-    type Message = irc::protocol::Message;
+    type Message = Event;
 
     fn ready(&mut self, event_loop: &mut EventLoop<Bridge>, token: Token, _: EventSet) {
         match token {
@@ -29,7 +35,13 @@ impl Handler for Bridge {
 
     fn notify(&mut self, event_loop: &mut EventLoop<Bridge>, msg: Self::Message) {
         println!("Got message from matrix! {:?}", msg);
-        self.client.send(&msg);
+        match msg {
+            Event::EndPoll => {
+                self.poll_matrix(event_loop.channel());
+            },
+            Event::Matrix(e) =>
+                self.handle_matrix(e)
+        };
     }
 }
 
@@ -52,39 +64,47 @@ impl Room {
         }
     }
 
-    fn handle_event(&mut self, channel: &mio::Sender<irc::protocol::Message>, room_evt: matrix::events::RoomEvent) {
-        match room_evt {
+    fn handle_event<F>(&mut self, evt: matrix::events::RoomEvent, mut callback: F)
+            where F: FnMut(irc::protocol::Message) {
+        match evt {
             matrix::events::RoomEvent::CanonicalAlias(name) => {
                 let was_empty = self.canonical_alias == None;
                 self.canonical_alias = Some(name.clone());
-                if was_empty {
-                    for ref u in &self.members {
-                        self.send_join(u, channel);
-                    }
+                for ref user in &self.members {
+                    callback(irc::protocol::Message {
+                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        command: irc::protocol::Command::Join,
+                        args: vec![self.canonical_alias.clone().unwrap()],
+                        suffix: None
+                    });
                 }
             },
             matrix::events::RoomEvent::JoinRules(rules) =>
                 self.join_rules = Some(rules.clone()),
             matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Join) => {
                 if self.canonical_alias != None {
-                    self.send_join(&user, channel);
+                    callback(irc::protocol::Message {
+                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        command: irc::protocol::Command::Join,
+                        args: vec![self.canonical_alias.clone().unwrap()],
+                        suffix: None
+                    });
                 }
                 self.members.push(user);
+            },
+            matrix::events::RoomEvent::Message(user, text) => {
+                callback(irc::protocol::Message {
+                    prefix: Some(format!("{}@anony.oob", user.nickname)),
+                    command: irc::protocol::Command::Privmsg,
+                    args: vec![self.canonical_alias.clone().unwrap()],
+                    suffix: Some(text)
+                });
             },
             matrix::events::RoomEvent::Create => (),
             matrix::events::RoomEvent::Aliases => (),
             matrix::events::RoomEvent::PowerLevels => (),
             matrix::events::RoomEvent::HistoryVisibility(_) => ()
         };
-    }
-
-    fn send_join(&self, user: &matrix::events::UserID, channel: &mio::Sender<irc::protocol::Message>) {
-        channel.send(irc::protocol::Message {
-            prefix: Some(format!("{}@anony.oob", user.nickname)),
-            command: irc::protocol::Command::Join,
-            args: vec![self.canonical_alias.clone().unwrap()],
-            suffix: None
-        });
     }
 }
 
@@ -114,24 +134,39 @@ impl Bridge {
         events.run(self).unwrap();
     }
 
-    fn handle_matrix(evt: matrix::events::Event, channel: &mio::Sender<irc::protocol::Message>) {
-        match evt.data {
-            /*matrix::events::EventData::Room(room_id, room_event) => {
-                self.room(&room_id).handle_event(channel, room_event);
-            },*/
-            matrix::events::EventData::Text(text) => {
-            },
-            _ => println!("Unhandled {:?}", evt)
+    fn handle_matrix(&mut self, evt: matrix::events::Event) {
+        let mut messages: Vec<irc::protocol::Message> = vec![];
+        {
+            let appendMsg = |msg: irc::protocol::Message| {
+                messages.push(msg);
+            };
+            match evt.data {
+                matrix::events::EventData::Room(room_id, room_event) => {
+                    self.room(&room_id).handle_event(room_event, appendMsg);
+                },
+                _ => println!("Unhandled {:?}", evt)
+            }
+        }
+        for ref msg in messages {
+            self.client.send(msg);
         }
     }
 
-    fn poll_matrix(&mut self, channel: mio::Sender<irc::protocol::Message>) {
+    fn poll_matrix(&mut self, channel: mio::Sender<Event>) -> thread::JoinHandle<()> {
         let poll = self.matrix.pollAsync();
         thread::spawn(move|| {
             for evt in poll.send() {
-                Bridge::handle_matrix(evt, &channel);
+                channel.send(Event::Matrix(evt));
             };
+            channel.send(Event::EndPoll);
+        })
+    }
+
+    fn start_matrix(&mut self, channel: mio::Sender<Event>) {
+        self.matrix.sync(|evt: matrix::events::Event| {
+            channel.send(Event::Matrix(evt));
         });
+        self.poll_matrix(channel);
     }
 
     fn handle_client(&mut self, events: &mut EventLoop<Bridge>) {
@@ -155,10 +190,7 @@ impl Bridge {
                                 (Some(username), Some(password)) => {
                                     self.matrix.login(username.trim(), password.trim());
                                     self.client.welcome(username.trim());
-                                    self.matrix.sync(|evt: matrix::events::Event| {
-                                        Bridge::handle_matrix(evt, &events.channel());
-                                    });
-                                    self.poll_matrix(events.channel());
+                                    self.start_matrix(events.channel());
                                     println!("Logged in {:?}", username);
                                 },
                                 _ => panic!("Username and/or password missing")
@@ -176,10 +208,12 @@ impl Bridge {
                         },
                         Command::Privmsg => {
                             let uid = matrix::events::UserID::from_str("@tdfischer:localhost");
-                            let roomid = matrix::events::RoomID::from_str("!SNCDinqFeGteFrlCoN%3Alocalhost");
-                            let evt = matrix::events::EventData::Text(
-                                matrix::events::TextEvent::RoomMessage(
-                                    uid, roomid, message.suffix.unwrap()));
+                            let roomid = matrix::events::RoomID::from_str("!SNCDinqFeGteFrlCoN:localhost");
+                            let evt = matrix::events::EventData::Room(
+                                roomid,
+                                matrix::events::RoomEvent::Message(
+                                    uid, message.suffix.unwrap()));
+                            self.matrix.send(evt);
                         },
                         _ =>
                             println!("unhandled {:?}", message)
