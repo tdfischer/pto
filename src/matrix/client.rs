@@ -46,6 +46,7 @@ pub struct AccessToken {
 pub struct Client {
     http: hyper::Client,
     token: Option<AccessToken>,
+    nextID: u32,
 }
 
 impl fmt::Debug for Client {
@@ -59,6 +60,7 @@ impl Client {
         Client {
             http: hyper::Client::new(),
             token: None,
+            nextID: 0
         }
     }
 
@@ -114,6 +116,21 @@ impl Client {
         AsyncPoll {
             http: hyper::client::Client::new(),
             url: url
+        }
+    }
+
+    pub fn send(&mut self, evt: events::EventData) {
+        self.nextID += 1;
+        match evt {
+            events::EventData::Room(ref id, _) => {
+                let url = self.url(format!("rooms/{}/send/{}/{}", id, evt.type_str(), self.nextID).trim(), &HashMap::new());
+                let req = match self.http.put(url).body(format!("{}", evt.to_json()).trim()).send() {
+                    Ok(r) => r,
+                    Err(e) => panic!(e)
+                };
+                println!("sent! {} {:?}", evt.to_json(), req);
+            },
+            _ => unreachable!()
         }
     }
 
