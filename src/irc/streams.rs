@@ -31,63 +31,10 @@ impl Client {
         &self.stream
     }
 
-    fn split_parts(line: &str) -> (Option<String>, &str, Option<String>) {
-        let mut prefix_end = 0;
-        let mut args_end = 0;
-        if line.chars().nth(0).unwrap() == ':' {
-            for c in line[1..].chars() {
-                prefix_end += 1;
-                if c == ' ' {
-                    break
-                }
-            }
-        }
-
-        let mut found_space = false;
-        for c in line[prefix_end..].chars() {
-            if c == ' ' {
-                found_space = true;
-            } else if c == ':' && found_space {
-                args_end -= 1;
-                break
-            } else {
-                found_space = false;
-            }
-            args_end += 1;
-        }
-
-        let prefix = match prefix_end {
-            0 => None,
-            _ => Some(line[1..prefix_end].to_string())
-        };
-        let args = &line[prefix_end..args_end].trim();
-        let len = line.len();
-        let suffix = if args_end == len {
-            None
-        } else {
-            Some(line[args_end+2..].to_string())
-        };
-
-        (prefix, args, suffix)
-    }
-
     pub fn read_message(&mut self) -> Option<Message> {
         match self.line_reader.read(&mut self.stream) {
-            Some(line) => {
-                let parts = Self::split_parts(line.trim());
-                let split: Vec<&str> = parts.1.split(" ").collect();
-                let mut args = Vec::new();
-                for s in split[1..].iter() {
-                    args.push(s.to_string());
-                }
-                let parsedCommand: Result<Command, Command> = split[0].parse();
-                Some(Message{
-                    prefix: parts.0,
-                    command: parsedCommand.ok().unwrap(),
-                    args: args,
-                    suffix: parts.2
-                })
-            },
+            Some(line) =>
+                Some(Message::from_str(line.trim())),
             None => None
         }
     }
