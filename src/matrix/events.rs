@@ -68,11 +68,6 @@ pub enum RoomEvent {
 }
 
 #[derive(Debug)]
-pub enum TextEvent {
-    RoomMessage(UserID, RoomID, String)
-}
-
-#[derive(Debug)]
 pub struct TypingEvent {
     pub users: Vec<UserID>,
     pub room: RoomID,
