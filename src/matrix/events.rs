@@ -3,6 +3,22 @@ use rustc_serialize::json;
 use matrix::json as mjson;
 use std::fmt;
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct EventID {
+    pub id: String,
+    pub homeserver: String
+}
+
+impl EventID {
+    pub fn from_str(s: &str) -> Self {
+        let parts: Vec<&str> = s.split(":").collect();
+        EventID {
+            id: parts[0][1..].to_string(),
+            homeserver: parts[1].to_string()
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct UserID {
     pub nickname: String,
@@ -110,7 +126,7 @@ impl EventData {
 
 #[derive(Debug)]
 pub struct Event {
-    pub id: Option<String>,
+    pub id: Option<EventID>,
     pub data: EventData
 }
 
@@ -125,7 +141,7 @@ impl Event {
         let tokens: Vec<&str> = mjson::string(json, "type").trim().split(".").collect();
         assert!(tokens[0] == "m");
         let id = match json.as_object().unwrap().get("event_id") {
-            Some(i) => Some(i.as_string().unwrap().to_string()),
+            Some(i) => Some(EventID::from_str(i.as_string().unwrap())),
             None => None
         };
         Event {
