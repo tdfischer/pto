@@ -166,6 +166,8 @@ impl Event {
                     RoomEvent::Aliases,
                 "power_levels" =>
                     RoomEvent::PowerLevels,
+                "message" =>
+                    RoomEvent::Message(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.body").to_string()),
                 e => panic!("Unknown room event {:?}: {:?}", e, json)
             }
         )
