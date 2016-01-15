@@ -5,6 +5,7 @@ pub enum Command {
     Nick,
     User,
     Join,
+    Part,
     Quit,
     Ping,
     Mode,
@@ -20,6 +21,7 @@ impl Command {
         match self {
             &Command::Nick => "NICK".to_string(),
             &Command::Join => "JOIN".to_string(),
+            &Command::Part => "PART".to_string(),
             &Command::Pong => "PONG".to_string(),
             &Command::Privmsg => "PRIVMSG".to_string(),
             &Command::User => "USER".to_string(),
@@ -137,6 +139,7 @@ impl FromStr for Command {
             "NICK" => Ok(Command::Nick),
             "USER" => Ok(Command::User),
             "JOIN" => Ok(Command::Join),
+            "PART" => Ok(Command::Part),
             "QUIT" => Ok(Command::Quit),
             "PING" => Ok(Command::Ping),
             "MODE" => Ok(Command::Mode),
