@@ -18,7 +18,8 @@ pub enum Event {
 pub struct Bridge {
     client: irc::streams::Client,
     matrix: matrix::client::Client,
-    rooms: HashMap<matrix::events::RoomID, Room>
+    rooms: HashMap<matrix::events::RoomID, Room>,
+    seenEvents: Vec<matrix::events::EventID>,
 }
 
 impl Handler for Bridge {
@@ -124,7 +125,8 @@ impl Bridge {
         Bridge {
             client: client,
             matrix: matrix::client::Client::new(),
-            rooms: HashMap::new()
+            rooms: HashMap::new(),
+            seenEvents: vec![]
         }
     }
 
@@ -135,20 +137,32 @@ impl Bridge {
     }
 
     fn handle_matrix(&mut self, evt: matrix::events::Event) {
-        let mut messages: Vec<irc::protocol::Message> = vec![];
-        {
-            let appendMsg = |msg: irc::protocol::Message| {
-                messages.push(msg);
-            };
-            match evt.data {
-                matrix::events::EventData::Room(room_id, room_event) => {
-                    self.room(&room_id).handle_event(room_event, appendMsg);
-                },
-                _ => println!("Unhandled {:?}", evt)
+        let duplicate = match evt.id {
+            Some(ref id) =>
+                self.seenEvents.contains(id),
+            _ => false
+        };
+        if !duplicate {
+            let mut messages: Vec<irc::protocol::Message> = vec![];
+            {
+                let appendMsg = |msg: irc::protocol::Message| {
+                    messages.push(msg);
+                };
+                match evt.data {
+                    matrix::events::EventData::Room(room_id, room_event) => {
+                        self.room(&room_id).handle_event(room_event, appendMsg);
+                    },
+                    _ => println!("Unhandled {:?}", evt)
+                }
             }
-        }
-        for ref msg in messages {
-            self.client.send(msg);
+            match evt.id {
+                Some(id) =>
+                    self.seenEvents.push(id),
+                None => ()
+            };
+            for ref msg in messages {
+                self.client.send(msg);
+            }
         }
     }
 
@@ -213,7 +227,7 @@ impl Bridge {
                                 roomid,
                                 matrix::events::RoomEvent::Message(
                                     uid, message.suffix.unwrap()));
-                            self.matrix.send(evt);
+                            self.seenEvents.push(self.matrix.send(evt));
                         },
                         _ =>
                             println!("unhandled {:?}", message)
