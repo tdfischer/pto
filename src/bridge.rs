@@ -179,21 +179,28 @@ impl Bridge {
         }
     }
 
-    fn poll_matrix(&mut self, channel: mio::Sender<Event>) -> thread::JoinHandle<()> {
+    fn poll_matrix(&mut self, channel: mio::Sender<Event>) ->
+        thread::JoinHandle<matrix::client::Result> {
         let poll = self.matrix.pollAsync();
         thread::spawn(move|| {
-            for evt in poll.send() {
-                channel.send(Event::Matrix(evt));
-            };
-            channel.send(Event::EndPoll);
+            poll.send().and_then(|evts| {
+                for evt in evts {
+                    channel.send(Event::Matrix(evt));
+                };
+                channel.send(Event::EndPoll);
+                Ok(())
+            })
         })
     }
 
-    fn start_matrix(&mut self, channel: mio::Sender<Event>) {
+    fn start_matrix(&mut self, channel: mio::Sender<Event>) ->
+        matrix::client::Result {
         self.matrix.sync(|evt: matrix::events::Event| {
             channel.send(Event::Matrix(evt));
-        });
-        self.poll_matrix(channel);
+        }).and_then(|r| {
+            self.poll_matrix(channel);
+            Ok(r)
+        })
     }
 
     fn handle_client(&mut self, events: &mut EventLoop<Bridge>) {
@@ -215,10 +222,13 @@ impl Bridge {
                             let auth = self.client.auth.consume();
                             match (auth.username, auth.password) {
                                 (Some(username), Some(password)) => {
-                                    self.matrix.login(username.trim(), password.trim());
-                                    self.client.welcome(username.trim());
-                                    self.start_matrix(events.channel());
-                                    println!("Logged in {:?}", username);
+                                    self.matrix.login(username.trim(), password.trim())
+                                        .and(self.start_matrix(events.channel()))
+                                        .and_then(|_| {
+                                            self.client.welcome(username.trim());
+                                            println!("Logged in {:?}", username);
+                                            Ok(())
+                                        }).expect("Could not login!");
                                 },
                                 _ => panic!("Username and/or password missing")
                             };

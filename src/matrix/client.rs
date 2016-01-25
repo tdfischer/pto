@@ -7,19 +7,41 @@ use rustc_serialize::json::Json;
 use rustc_serialize::json;
 use std::fmt;
 use std::thread;
+use std::result;
 use irc;
 use matrix::json as mjson;
 use matrix::events;
+
+#[derive(Debug)]
+pub enum ClientError {
+    Http(hyper::Error),
+    UrlNotFound,
+    Json(json::ParserError)
+}
+
+pub type Result<T = ()> = result::Result<T, ClientError>;
 
 mod http {
     use rustc_serialize::json::{Json, ParserError};
     use hyper;
     use std::io::Read;
+    use matrix::client::{Result,ClientError};
 
-    pub fn json(http: hyper::client::RequestBuilder) -> Result<Json, ParserError> {
+    pub fn json(http: hyper::client::RequestBuilder) -> Result<Json> {
         let mut response = String::new();
-        http.send().unwrap().read_to_string(&mut response);
-        Json::from_str(response.trim())
+        http.send().map_err(|err|{
+            ClientError::Http(err)
+        }).and_then(|mut res|{
+            match res.status  {
+                hyper::status::StatusCode::Ok =>  {
+                    res.read_to_string(&mut response);
+                    Json::from_str(response.trim()).map_err(|err|{
+                        ClientError::Json(err)
+                    })
+                },
+                _ => Err(ClientError::UrlNotFound)
+            }
+        })
     }
 }
 
@@ -29,16 +51,16 @@ pub struct AsyncPoll {
 }
 
 impl AsyncPoll {
-    pub fn send(self) -> Vec<events::Event> {
-        let json = http::json(self.http.get(self.url)).unwrap();
-
-        println!("Response! {:?}", json);
-        let mut ret: Vec<events::Event> = vec![];
-        let events = mjson::array(&json, "chunk");
-        for ref evt in events {
-            ret.push(events::Event::from_json(evt))
-        }
-        ret
+    pub fn send(self) -> Result<Vec<events::Event>> {
+        http::json(self.http.get(self.url)).and_then(|json| {
+            println!("Response! {:?}", json);
+            let mut ret: Vec<events::Event> = vec![];
+            let events = mjson::array(&json, "chunk");
+            for ref evt in events {
+                ret.push(events::Event::from_json(evt))
+            }
+            Ok(ret)
+        })
     }
 }
 
@@ -71,19 +93,22 @@ impl Client {
         }
     }
 
-    pub fn login(&mut self, username: &str, password: &str) {
+    pub fn login(&mut self, username: &str, password: &str) -> Result {
         let mut d = BTreeMap::new();
         d.insert("user".to_string(), Json::String(username.to_string()));
         d.insert("password".to_string(), Json::String(password.to_string()));
         d.insert("type".to_string(), Json::String("m.login.password".to_string()));
         println!("Logging in to matrix");
-        let js = http::json(self.http.post(self.url("login", &HashMap::new()))
-            .body(Json::Object(d).to_string().trim())).unwrap();
-        let obj = js.as_object().unwrap();
-        self.token = Some(AccessToken {
-            access: obj.get("access_token").unwrap().as_string().unwrap().to_string(),
-            refresh: obj.get("refresh_token").unwrap().as_string().unwrap().to_string()
-        })
+        http::json(self.http.post(self.url("login", &HashMap::new()))
+            .body(Json::Object(d).to_string().trim()))
+            .and_then(|js| {
+                let obj = js.as_object().unwrap();
+                self.token = Some(AccessToken {
+                    access: obj.get("access_token").unwrap().as_string().unwrap().to_string(),
+                    refresh: obj.get("refresh_token").unwrap().as_string().unwrap().to_string()
+                });
+                Ok(())
+            })
     }
 
     fn url(&self, endpoint: &str, args: &HashMap<&str, &str>) -> hyper::Url {
@@ -128,20 +153,22 @@ impl Client {
         events::EventID::from_str(mjson::string(&response, "event_id"))
     }
 
-    pub fn sync<F>(&mut self, callback: F)
+    pub fn sync<F>(&mut self, callback: F) -> Result
             where F: Fn(events::Event) {
         println!("Syncing...");
         let mut args = HashMap::new();
         args.insert("limit", "0");
         let url = self.url("initialSync", &args);
-        let js = http::json(self.http.get(url)).unwrap();
-        let rooms = mjson::array(&js, "rooms");
-        for ref r in rooms {
-            let roomState = mjson::array(r, "state");
-            let mut roomName: Option<String> = None;
-            for ref evt in roomState {
-                callback(events::Event::from_json(evt));
-            };
-        }
+        http::json(self.http.get(url)).and_then(|js| {
+            let rooms = mjson::array(&js, "rooms");
+            for ref r in rooms {
+                let roomState = mjson::array(r, "state");
+                let mut roomName: Option<String> = None;
+                for ref evt in roomState {
+                    callback(events::Event::from_json(evt));
+                };
+            }
+            Ok(())
+        })
     }
 }
