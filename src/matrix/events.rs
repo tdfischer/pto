@@ -100,7 +100,8 @@ pub struct TypingEvent {
 pub enum EventData {
     Room(RoomID, RoomEvent),
     Typing(TypingEvent),
-    Presence(PresenceEvent)
+    Presence(PresenceEvent),
+    Unknown(Json)
 }
 
 impl EventData {
@@ -146,27 +147,33 @@ pub struct PresenceEvent {
 impl Event {
     pub fn from_json(json: &Json) -> Self {
         let tokens: Vec<&str> = mjson::string(json, "type").trim().split(".").collect();
-        assert!(tokens[0] == "m");
         let id = match json.as_object().unwrap().get("event_id") {
             Some(i) => Some(EventID::from_str(i.as_string().unwrap())),
             None => None
         };
-        Event {
-            id: id,
-            data: match tokens[1] {
-                "room" =>
-                    Self::from_room_json(tokens[2], json),
-                "typing" =>
-                    EventData::Typing(TypingEvent {
-                        users: vec![],
-                        room: RoomID::from_str(mjson::string(json, "room_id"))
-                    }),
-                "presence" =>
-                    EventData::Presence(PresenceEvent{
-                        presence: mjson::string(json, "content.presence").to_string(),
-                        user: UserID::from_str(mjson::string(json, "content.user_id"))
-                    }),
-                e => panic!("Unknown event {:?}!\nRaw JSON: {:?}", e, json)
+        if tokens[0] != "m" {
+            Event {
+                id: id,
+                data: EventData::Unknown(json.clone()),
+            }
+        } else {
+            Event {
+                id: id,
+                data: match tokens[1] {
+                    "room" =>
+                        Self::from_room_json(tokens[2], json),
+                    "typing" =>
+                        EventData::Typing(TypingEvent {
+                            users: vec![],
+                            room: RoomID::from_str(mjson::string(json, "room_id"))
+                        }),
+                    "presence" =>
+                        EventData::Presence(PresenceEvent{
+                            presence: mjson::string(json, "content.presence").to_string(),
+                            user: UserID::from_str(mjson::string(json, "content.user_id"))
+                        }),
+                    e => panic!("Unknown event {:?}!\nRaw JSON: {:?}", e, json)
+                }
             }
         }
     }
