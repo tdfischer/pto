@@ -59,13 +59,19 @@ impl RoomID {
 
 #[derive(Debug)]
 pub enum MembershipAction {
-    Join
+    Join,
+    Leave,
+    Ban,
+    Invite,
 }
 
 impl MembershipAction {
     pub fn from_str(s: &str) -> Self {
         match s {
             "join" => MembershipAction::Join,
+            "leave" => MembershipAction::Leave,
+            "ban" => MembershipAction::Ban,
+            "invite" => MembershipAction::Invite,
             _ => panic!("unknown membership action {:?}", s)
         }
     }
