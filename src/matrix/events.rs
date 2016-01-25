@@ -87,7 +87,10 @@ pub enum RoomEvent {
     Aliases,
     Message(UserID, String),
     PowerLevels,
-    Name(UserID, String)
+    Name(UserID, String),
+    Avatar(UserID, String),
+    Topic(UserID, String),
+    Unknown(Json)
 }
 
 #[derive(Debug)]
@@ -184,8 +187,13 @@ impl Event {
             match event_type {
                 "canonical_alias" =>
                     RoomEvent::CanonicalAlias(mjson::string(json, "content.alias").to_string()),
-                "join_rules" =>
-                    RoomEvent::JoinRules(mjson::string(json, "content.join_rule").to_string()),
+                "join_rules" => {
+                        if json.find_path(&["content", "join_rules"]) == None {
+                            RoomEvent::Unknown(json.clone())
+                        } else {
+                            RoomEvent::JoinRules(mjson::string(json, "content.join_rules").to_string())
+                        }
+                    },
                 "member" =>
                     RoomEvent::Membership(UserID::from_str(mjson::string(json, "user_id")), MembershipAction::from_str(mjson::string(json, "content.membership"))),
                 "history_visibility" =>
@@ -200,6 +208,10 @@ impl Event {
                     RoomEvent::Message(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.body").to_string()),
                 "name" =>
                     RoomEvent::Name(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.name").to_string()),
+                "topic" =>
+                    RoomEvent::Topic(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.topic").to_string()),
+                "avatar" =>
+                    RoomEvent::Avatar(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.url").to_string()),
                 e => panic!("Unknown room event {:?}: {:?}", e, json)
             }
         )
