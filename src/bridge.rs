@@ -93,6 +93,18 @@ impl Room {
                 }
                 self.members.push(user);
             },
+            matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Leave) => {
+                if self.canonical_alias != None {
+                    callback(irc::protocol::Message {
+                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        command: irc::protocol::Command::Part,
+                        args: vec![self.canonical_alias.clone().unwrap()],
+                        suffix: None
+                    });
+                }
+                self.members.push(user);
+            },
+            matrix::events::RoomEvent::Membership(user, _) => (),
             matrix::events::RoomEvent::Message(user, text) => {
                 callback(irc::protocol::Message {
                     prefix: Some(format!("{}@anony.oob", user.nickname)),
