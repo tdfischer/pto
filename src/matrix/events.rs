@@ -189,7 +189,7 @@ impl Event {
                     RoomEvent::CanonicalAlias(mjson::string(json, "content.alias").to_string()),
                 "join_rules" => {
                         if json.find_path(&["content", "join_rules"]) == None {
-                            RoomEvent::Unknown(json.clone())
+                            RoomEvent::JoinRules(mjson::string(json, "content.join_rule").to_string())
                         } else {
                             RoomEvent::JoinRules(mjson::string(json, "content.join_rules").to_string())
                         }
