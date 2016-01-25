@@ -20,6 +20,7 @@ pub struct Bridge {
     matrix: matrix::client::Client,
     rooms: HashMap<matrix::events::RoomID, Room>,
     seenEvents: Vec<matrix::events::EventID>,
+    server_name: String,
 }
 
 impl Handler for Bridge {
@@ -176,7 +177,8 @@ impl Bridge {
             client: client,
             matrix: matrix::client::Client::new(url),
             rooms: HashMap::new(),
-            seenEvents: vec![]
+            seenEvents: vec![],
+            server_name: "oob.systems".to_string()
         }
     }
 
