@@ -74,7 +74,8 @@ pub struct Client {
     http: hyper::Client,
     token: Option<AccessToken>,
     nextID: u32,
-    baseurl: String
+    baseurl: String,
+    pub uid: Option<events::UserID>
 }
 
 impl fmt::Debug for Client {
@@ -89,7 +90,8 @@ impl Client {
             http: hyper::Client::new(),
             token: None,
             nextID: 0,
-            baseurl: baseurl.to_string()
+            baseurl: baseurl.to_string(),
+            uid: None
         }
     }
 
@@ -107,6 +109,7 @@ impl Client {
                     access: obj.get("access_token").unwrap().as_string().unwrap().to_string(),
                     refresh: obj.get("refresh_token").unwrap().as_string().unwrap().to_string()
                 });
+                self.uid = Some(events::UserID::from_str(format!("@{}:{}", username, "oob.systems").trim()));
                 Ok(())
             })
     }
