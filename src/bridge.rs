@@ -121,10 +121,10 @@ impl Bridge {
         }
     }
 
-    pub fn new(client: irc::streams::Client) -> Self {
+    pub fn new(client: irc::streams::Client, url: &str) -> Self {
         Bridge {
             client: client,
-            matrix: matrix::client::Client::new(),
+            matrix: matrix::client::Client::new(url),
             rooms: HashMap::new(),
             seenEvents: vec![]
         }

@@ -52,6 +52,7 @@ pub struct Client {
     http: hyper::Client,
     token: Option<AccessToken>,
     nextID: u32,
+    baseurl: String
 }
 
 impl fmt::Debug for Client {
@@ -61,11 +62,12 @@ impl fmt::Debug for Client {
 }
 
 impl Client {
-    pub fn new() -> Self {
+    pub fn new(baseurl: &str) -> Self {
         Client {
             http: hyper::Client::new(),
             token: None,
-            nextID: 0
+            nextID: 0,
+            baseurl: baseurl.to_string()
         }
     }
 
@@ -85,7 +87,7 @@ impl Client {
     }
 
     fn url(&self, endpoint: &str, args: &HashMap<&str, &str>) -> hyper::Url {
-        let mut ret = "http://localhost:8008/_matrix/client/api/v1/".to_string();
+        let mut ret = self.baseurl.clone();
         ret.push_str(endpoint);
         ret.push_str("?");
         match self.token {
