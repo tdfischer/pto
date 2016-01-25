@@ -1,5 +1,7 @@
 # Perpetually Talking Online
 
+[![Build Status](https://travis-ci.org/tdfischer/pto.svg?branch=master)](https://travis-ci.org/tdfischer/pto)
+
 An IRC to Matrix bridge.
 
 This is different from the existing appservice on matrix.org. This work in
