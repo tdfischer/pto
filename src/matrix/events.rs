@@ -86,7 +86,8 @@ pub enum RoomEvent {
     Create,
     Aliases,
     Message(UserID, String),
-    PowerLevels
+    PowerLevels,
+    Name(UserID, String)
 }
 
 #[derive(Debug)]
@@ -190,6 +191,8 @@ impl Event {
                     RoomEvent::PowerLevels,
                 "message" =>
                     RoomEvent::Message(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.body").to_string()),
+                "name" =>
+                    RoomEvent::Name(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.name").to_string()),
                 e => panic!("Unknown room event {:?}: {:?}", e, json)
             }
         )
