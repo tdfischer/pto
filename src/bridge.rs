@@ -104,7 +104,8 @@ impl Room {
             matrix::events::RoomEvent::Create => (),
             matrix::events::RoomEvent::Aliases => (),
             matrix::events::RoomEvent::PowerLevels => (),
-            matrix::events::RoomEvent::HistoryVisibility(_) => ()
+            matrix::events::RoomEvent::HistoryVisibility(_) => (),
+            matrix::events::RoomEvent::Name(_, _) => ()
         };
     }
 }
