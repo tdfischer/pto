@@ -89,14 +89,12 @@ impl Room {
                     self.members.push(user);
                 },
                 matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Leave) => {
-                    if self.canonical_alias != None {
-                        callback(irc::protocol::Message {
-                            prefix: Some(format!("{}@anony.oob", user.nickname)),
-                            command: irc::protocol::Command::Part,
-                            args: vec![self.canonical_alias.clone().unwrap()],
-                            suffix: None
-                        });
-                    }
+                    callback(irc::protocol::Message {
+                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        command: irc::protocol::Command::Part,
+                        args: vec![self.canonical_alias.clone().unwrap()],
+                        suffix: None
+                    });
                     self.members.push(user);
                 },
                 matrix::events::RoomEvent::Membership(user, _) => (),
@@ -162,7 +160,7 @@ impl Room {
 
 
 impl Bridge {
-    pub fn room(&mut self, id: &matrix::events::RoomID) -> &mut Room {
+    pub fn room_from_matrix(&mut self, id: &matrix::events::RoomID) -> &mut Room {
         if !self.rooms.contains_key(id) {
             self.rooms.insert(id.clone(), Room::new(id.clone()));
         }
@@ -170,6 +168,18 @@ impl Bridge {
             Some(room) => room,
             None => unreachable!()
         }
+    }
+
+    pub fn room_from_irc(&mut self, id: &String) -> &mut Room {
+        let mut room_id: Option<matrix::events::RoomID> = None;
+        for (_, r) in self.rooms.iter_mut() {
+            if let Some(ref alias) = r.canonical_alias {
+                if alias == id {
+                    room_id = Some(r.id.clone())
+                }
+            }
+        }
+        self.room_from_matrix(&room_id.unwrap())
     }
 
     pub fn new(client: irc::streams::Client, url: &str) -> Self {
@@ -202,7 +212,7 @@ impl Bridge {
                 };
                 match evt.data {
                     matrix::events::EventData::Room(room_id, room_event) => {
-                        self.room(&room_id).handle_event(room_event, appendMsg);
+                        self.room_from_matrix(&room_id).handle_event(room_event, appendMsg);
                     },
                     _ => println!("Unhandled {:?}", evt)
                 }
@@ -283,13 +293,15 @@ impl Bridge {
                             return;
                         },
                         Command::Privmsg => {
-                            let uid = matrix::events::UserID::from_str("@tdfischer:localhost");
-                            let roomid = matrix::events::RoomID::from_str("!SNCDinqFeGteFrlCoN:localhost");
-                            let evt = matrix::events::EventData::Room(
-                                roomid,
-                                matrix::events::RoomEvent::Message(
-                                    uid, message.suffix.unwrap()));
-                            self.seenEvents.push(self.matrix.send(evt));
+                            let evt = {
+                                let id = self.matrix.uid.clone().unwrap();
+                                let room = self.room_from_irc(&message.args[0]);
+                                matrix::events::EventData::Room(
+                                    room.id.clone(),
+                                    matrix::events::RoomEvent::Message(
+                                        id, message.suffix.unwrap()))
+                            };
+                            self.seenEvents.push(self.matrix.send(evt).unwrap());
                         },
                         _ =>
                             println!("unhandled {:?}", message)
