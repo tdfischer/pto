@@ -12,7 +12,7 @@ pub struct Client {
     stream: TcpStream,
     line_reader: LineReader,
     nickname: Option<String>,
-    username: Option<String>,
+    pub username: Option<String>,
     pub auth: AuthSession,
 }
 
