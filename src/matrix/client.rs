@@ -1,14 +1,10 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::io::Read;
 use hyper;
-use hyper::status::StatusCode;
 use rustc_serialize::json::Json;
 use rustc_serialize::json;
 use std::fmt;
-use std::thread;
 use std::result;
-use irc;
 use matrix::json as mjson;
 use matrix::events;
 
@@ -22,7 +18,7 @@ pub enum ClientError {
 pub type Result<T = ()> = result::Result<T, ClientError>;
 
 mod http {
-    use rustc_serialize::json::{Json, ParserError};
+    use rustc_serialize::json::Json;
     use hyper;
     use std::io::Read;
     use matrix::client::{Result,ClientError};
@@ -34,7 +30,7 @@ mod http {
         }).and_then(|mut res|{
             match res.status  {
                 hyper::status::StatusCode::Ok =>  {
-                    res.read_to_string(&mut response);
+                    res.read_to_string(&mut response).expect("Could not read response");
                     Json::from_str(response.trim()).map_err(|err|{
                         ClientError::Json(err)
                     })
@@ -73,13 +69,13 @@ pub struct AccessToken {
 pub struct Client {
     http: hyper::Client,
     token: Option<AccessToken>,
-    nextID: u32,
+    next_id: u32,
     baseurl: String,
     pub uid: Option<events::UserID>
 }
 
 impl fmt::Debug for Client {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
         Ok(())
     }
 }
@@ -89,7 +85,7 @@ impl Client {
         Client {
             http: hyper::Client::new(),
             token: None,
-            nextID: 0,
+            next_id: 0,
             baseurl: baseurl.to_string(),
             uid: None
         }
@@ -135,7 +131,7 @@ impl Client {
         hyper::Url::parse(ret.trim()).unwrap()
     }
 
-    pub fn pollAsync(&mut self) -> AsyncPoll {
+    pub fn poll_async(&mut self) -> AsyncPoll {
         let url = self.url("events", &HashMap::new());
         AsyncPoll {
             http: hyper::client::Client::new(),
@@ -144,13 +140,13 @@ impl Client {
     }
 
     pub fn send(&mut self, evt: events::EventData) -> Result<events::EventID> {
-        self.nextID += 1;
+        self.next_id += 1;
         match evt {
             events::EventData::Room(ref id, _) => {
                 let url = self.url(format!("rooms/{}/send/{}/{}",
                                            id,
                                            evt.type_str(),
-                                           self.nextID).trim(),
+                                           self.next_id).trim(),
                                    &HashMap::new());
                 println!("Sending events to {:?}", url);
                 http::json(self.http.put(url).body(format!("{}", evt.to_json()).trim()))
@@ -171,9 +167,8 @@ impl Client {
         http::json(self.http.get(url)).and_then(|js| {
             let rooms = mjson::array(&js, "rooms");
             for ref r in rooms {
-                let roomState = mjson::array(r, "state");
-                let mut roomName: Option<String> = None;
-                for ref evt in roomState {
+                let room_state = mjson::array(r, "state");
+                for ref evt in room_state {
                     callback(events::Event::from_json(evt));
                 };
             }

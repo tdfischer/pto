@@ -120,9 +120,9 @@ impl EventData {
     pub fn to_json(&self) -> json::Json {
         let mut ret = json::Object::new();
         match self {
-            &EventData::Room(ref id, ref evt) => {
+            &EventData::Room(ref _id, ref evt) => {
                 match evt {
-                    &RoomEvent::Message(ref sender, ref text) => {
+                    &RoomEvent::Message(_, ref text) => {
                         ret.insert("msgtype".to_string(), json::Json::String("m.text".to_string()));
                         ret.insert("body".to_string(), json::Json::String(text.clone()));
                     },
@@ -212,7 +212,7 @@ impl Event {
                     RoomEvent::Topic(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.topic").to_string()),
                 "avatar" =>
                     RoomEvent::Avatar(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.url").to_string()),
-                e => panic!("Unknown room event {:?}: {:?}", e, json)
+                _ => RoomEvent::Unknown(json.clone())
             }
         )
     }

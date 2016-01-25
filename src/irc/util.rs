@@ -22,8 +22,8 @@ impl LineReader {
 
     fn read_and_split(&mut self, stream: &mut Read) -> Option<String> {
         let mut buf = [0; 1024];
-        let nextMsg = stream.read(&mut buf);
-        match nextMsg {
+        let next_msg = stream.read(&mut buf);
+        match next_msg {
             Ok(count) => {
                 self.linebuf.push_str(str::from_utf8(&buf[0..count]).unwrap());
                 self.split_next_line()
@@ -33,12 +33,12 @@ impl LineReader {
     }
 
     fn split_next_line(&mut self) -> Option<String> {
-        let newStr;
+        let new_str;
         let split;
         match self.linebuf.find("\r\n") {
             Some(idx) => {
-                newStr = self.linebuf.clone();
-                split = newStr.split_at(idx);
+                new_str = self.linebuf.clone();
+                split = new_str .split_at(idx);
             },
             None =>
                 return None

@@ -112,10 +112,10 @@ impl Message {
         for s in split[1..].iter() {
             args.push(s.to_string());
         }
-        let parsedCommand: Result<Command, Command> = split[0].parse();
+        let parsed_command: Result<Command, Command> = split[0].parse();
         Message{
             prefix: parts.0,
-            command: parsedCommand.ok().unwrap(),
+            command: parsed_command.ok().unwrap(),
             args: args,
             suffix: parts.2
         }

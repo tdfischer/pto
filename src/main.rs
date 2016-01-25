@@ -18,7 +18,7 @@ impl Handler for IrcHandler {
     type Timeout = ();
     type Message = ();
 
-    fn ready(&mut self, event_loop: &mut EventLoop<IrcHandler>, token: Token, _: EventSet) {
+    fn ready(&mut self, _event_loop: &mut EventLoop<IrcHandler>, token: Token, _: EventSet) {
         match token {
             SERVER => {
                 match self.server.accept() {
@@ -40,7 +40,6 @@ const SERVER: Token = Token(0);
 
 fn main() {
     let addr = "127.0.0.1:8001".parse().unwrap();
-    let args: Vec<_> = env::args().collect();
     let url =  env::args().nth(1).unwrap();
     let server = irc::streams::Server::new(&addr);
     println!("Listening on 127.0.0.1:8001");

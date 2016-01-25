@@ -7,7 +7,6 @@ use std::thread;
 use std::collections::HashMap;
 
 const CLIENT: Token = Token(0);
-const MATRIX: Token = Token(1);
 
 #[derive(Debug)]
 pub enum Event {
@@ -19,8 +18,7 @@ pub struct Bridge {
     client: irc::streams::Client,
     matrix: matrix::client::Client,
     rooms: HashMap<matrix::events::RoomID, Room>,
-    seenEvents: Vec<matrix::events::EventID>,
-    server_name: String,
+    seen_events: Vec<matrix::events::EventID>,
 }
 
 impl Handler for Bridge {
@@ -97,7 +95,7 @@ impl Room {
                     });
                     self.members.push(user);
                 },
-                matrix::events::RoomEvent::Membership(user, _) => (),
+                matrix::events::RoomEvent::Membership(_, _) => (),
                 matrix::events::RoomEvent::Message(user, text) => {
                     callback(irc::protocol::Message {
                         prefix: Some(format!("{}@anony.oob", user.nickname)),
@@ -187,8 +185,7 @@ impl Bridge {
             client: client,
             matrix: matrix::client::Client::new(url),
             rooms: HashMap::new(),
-            seenEvents: vec![],
-            server_name: "oob.systems".to_string()
+            seen_events: vec![]
         }
     }
 
@@ -201,42 +198,42 @@ impl Bridge {
     fn handle_matrix(&mut self, evt: matrix::events::Event) {
         let duplicate = match evt.id {
             Some(ref id) =>
-                self.seenEvents.contains(id),
+                self.seen_events.contains(id),
             _ => false
         };
         if !duplicate {
             let mut messages: Vec<irc::protocol::Message> = vec![];
             {
-                let appendMsg = |msg: irc::protocol::Message| {
+                let append_msg = |msg: irc::protocol::Message| {
                     messages.push(msg);
                 };
                 match evt.data {
                     matrix::events::EventData::Room(room_id, room_event) => {
-                        self.room_from_matrix(&room_id).handle_event(room_event, appendMsg);
+                        self.room_from_matrix(&room_id).handle_event(room_event, append_msg);
                     },
                     _ => println!("Unhandled {:?}", evt)
                 }
             }
             match evt.id {
                 Some(id) =>
-                    self.seenEvents.push(id),
+                    self.seen_events.push(id),
                 None => ()
             };
             for ref msg in messages {
-                self.client.send(msg);
+                self.client.send(msg).unwrap();
             }
         }
     }
 
     fn poll_matrix(&mut self, channel: mio::Sender<Event>) ->
         thread::JoinHandle<matrix::client::Result> {
-        let poll = self.matrix.pollAsync();
+        let poll = self.matrix.poll_async();
         thread::spawn(move|| {
             poll.send().and_then(|evts| {
                 for evt in evts {
-                    channel.send(Event::Matrix(evt));
+                    channel.send(Event::Matrix(evt)).unwrap();
                 };
-                channel.send(Event::EndPoll);
+                channel.send(Event::EndPoll).unwrap();
                 Ok(())
             })
         })
@@ -245,7 +242,7 @@ impl Bridge {
     fn start_matrix(&mut self, channel: mio::Sender<Event>) ->
         matrix::client::Result {
         self.matrix.sync(|evt: matrix::events::Event| {
-            channel.send(Event::Matrix(evt));
+            channel.send(Event::Matrix(evt)).unwrap();
         }).and_then(|r| {
             self.poll_matrix(channel);
             Ok(r)
@@ -274,7 +271,7 @@ impl Bridge {
                                     self.matrix.login(username.trim(), password.trim())
                                         .and(self.start_matrix(events.channel()))
                                         .and_then(|_| {
-                                            self.client.welcome(username.trim());
+                                            self.client.welcome(username.trim()).unwrap();
                                             println!("Logged in {:?}", username);
                                             Ok(())
                                         }).expect("Could not login!");
@@ -283,10 +280,10 @@ impl Bridge {
                             };
                         },
                         Command::Join => {
-                            self.client.join(&message.args[0]);
+                            self.client.join(&message.args[0]).expect("Could not send JOIN");
                         },
                         Command::Ping => {
-                            self.client.pong();
+                            self.client.pong().expect("Could not send PONG");
                         },
                         Command::Quit => {
                             // FIXME: Logout of matrix and exit thread
@@ -301,7 +298,7 @@ impl Bridge {
                                     matrix::events::RoomEvent::Message(
                                         id, message.suffix.unwrap()))
                             };
-                            self.seenEvents.push(self.matrix.send(evt).unwrap());
+                            self.seen_events.push(self.matrix.send(evt).expect("Could not send event"));
                         },
                         _ =>
                             println!("unhandled {:?}", message)
