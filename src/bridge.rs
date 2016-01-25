@@ -52,7 +52,8 @@ struct Room {
     id: matrix::events::RoomID,
     canonical_alias: Option<String>,
     join_rules: Option<String>,
-    members: Vec<matrix::events::UserID>
+    members: Vec<matrix::events::UserID>,
+    pending_events: Vec<matrix::events::RoomEvent>
 }
 
 impl Room {
@@ -61,7 +62,66 @@ impl Room {
             id: id,
             canonical_alias: None,
             join_rules: None,
-            members: vec![]
+            members: vec![],
+            pending_events: vec![]
+        }
+    }
+
+    fn run_pending<F>(&mut self, mut callback: &mut F)
+            where F: FnMut(irc::protocol::Message) {
+        while let Some(evt) = self.pending_events.pop() {
+            self.handle_with_alias(evt, callback);
+        }
+    }
+
+    fn handle_with_alias<F>(&mut self, evt: matrix::events::RoomEvent, mut callback: &mut F)
+            where F: FnMut(irc::protocol::Message) {
+        if self.canonical_alias != None {
+            match evt {
+                matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Join) => {
+                    callback(irc::protocol::Message {
+                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        command: irc::protocol::Command::Join,
+                        args: vec![self.canonical_alias.clone().unwrap()],
+                        suffix: None
+                    });
+                    self.members.push(user);
+                },
+                matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Leave) => {
+                    if self.canonical_alias != None {
+                        callback(irc::protocol::Message {
+                            prefix: Some(format!("{}@anony.oob", user.nickname)),
+                            command: irc::protocol::Command::Part,
+                            args: vec![self.canonical_alias.clone().unwrap()],
+                            suffix: None
+                        });
+                    }
+                    self.members.push(user);
+                },
+                matrix::events::RoomEvent::Membership(user, _) => (),
+                matrix::events::RoomEvent::Message(user, text) => {
+                    callback(irc::protocol::Message {
+                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        command: irc::protocol::Command::Privmsg,
+                        args: vec![self.canonical_alias.clone().unwrap()],
+                        suffix: Some(text)
+                    });
+                },
+                matrix::events::RoomEvent::Topic(user, topic) => {
+                    callback(irc::protocol::Message {
+                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        command: irc::protocol::Command::Topic,
+                        args: vec![self.canonical_alias.clone().unwrap()],
+                        suffix: Some(topic.clone())
+                    });
+                },
+                matrix::events::RoomEvent::CanonicalAlias(_) => unreachable!(),
+                _ => {
+                    println!("Unhandled event {:?}", evt)
+                }
+            }
+        } else {
+            self.pending_events.push(evt);
         }
     }
 
@@ -78,46 +138,23 @@ impl Room {
                         args: vec![self.canonical_alias.clone().unwrap()],
                         suffix: None
                     });
+                };
+                if was_empty {
+                    self.run_pending(&mut callback);
                 }
             },
             matrix::events::RoomEvent::JoinRules(rules) =>
                 self.join_rules = Some(rules.clone()),
-            matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Join) => {
-                if self.canonical_alias != None {
-                    callback(irc::protocol::Message {
-                        prefix: Some(format!("{}@anony.oob", user.nickname)),
-                        command: irc::protocol::Command::Join,
-                        args: vec![self.canonical_alias.clone().unwrap()],
-                        suffix: None
-                    });
-                }
-                self.members.push(user);
-            },
-            matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Leave) => {
-                if self.canonical_alias != None {
-                    callback(irc::protocol::Message {
-                        prefix: Some(format!("{}@anony.oob", user.nickname)),
-                        command: irc::protocol::Command::Part,
-                        args: vec![self.canonical_alias.clone().unwrap()],
-                        suffix: None
-                    });
-                }
-                self.members.push(user);
-            },
-            matrix::events::RoomEvent::Membership(user, _) => (),
-            matrix::events::RoomEvent::Message(user, text) => {
-                callback(irc::protocol::Message {
-                    prefix: Some(format!("{}@anony.oob", user.nickname)),
-                    command: irc::protocol::Command::Privmsg,
-                    args: vec![self.canonical_alias.clone().unwrap()],
-                    suffix: Some(text)
-                });
-            },
             matrix::events::RoomEvent::Create => (),
             matrix::events::RoomEvent::Aliases => (),
             matrix::events::RoomEvent::PowerLevels => (),
             matrix::events::RoomEvent::HistoryVisibility(_) => (),
-            matrix::events::RoomEvent::Name(_, _) => ()
+            matrix::events::RoomEvent::Name(_, _) => (),
+            matrix::events::RoomEvent::Avatar(_, _) => (),
+            matrix::events::RoomEvent::Unknown(json) => {
+                println!("Unknown room event: {:?}", json);
+            }
+            _ => self.handle_with_alias(evt, &mut callback)
         };
     }
 }
