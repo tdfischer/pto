@@ -143,17 +143,23 @@ impl Client {
         }
     }
 
-    pub fn send(&mut self, evt: events::EventData) -> events::EventID {
+    pub fn send(&mut self, evt: events::EventData) -> Result<events::EventID> {
         self.nextID += 1;
-        let response = match evt {
+        match evt {
             events::EventData::Room(ref id, _) => {
-                let url = self.url(format!("rooms/{}/send/{}/{}", id, evt.type_str(), self.nextID).trim(), &HashMap::new());
+                let url = self.url(format!("rooms/{}/send/{}/{}",
+                                           id,
+                                           evt.type_str(),
+                                           self.nextID).trim(),
+                                   &HashMap::new());
+                println!("Sending events to {:?}", url);
                 http::json(self.http.put(url).body(format!("{}", evt.to_json()).trim()))
             },
             _ => unreachable!()
-        }.unwrap();
-        println!("sent! {} {:?}", evt.to_json(), response);
-        events::EventID::from_str(mjson::string(&response, "event_id"))
+        }.and_then(|response| {
+            println!("sent! {} {:?}", evt.to_json(), response);
+            Ok(events::EventID::from_str(mjson::string(&response, "event_id")))
+        })
     }
 
     pub fn sync<F>(&mut self, callback: F) -> Result
