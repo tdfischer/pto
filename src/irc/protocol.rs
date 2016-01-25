@@ -12,6 +12,7 @@ pub enum Command {
     Pong,
     Pass,
     Privmsg,
+    Topic,
     Numeric(u32),
     Unknown(String)
 }
@@ -29,6 +30,7 @@ impl Command {
             &Command::Ping => "PING".to_string(),
             &Command::Mode => "MODE".to_string(),
             &Command::Pass => "PASS".to_string(),
+            &Command::Topic => "TOPIC".to_string(),
             &Command::Numeric(n)=> format!("{:0>3}", n),
             &Command::Unknown(ref s) => s.clone()
         }
@@ -144,6 +146,7 @@ impl FromStr for Command {
             "PING" => Ok(Command::Ping),
             "MODE" => Ok(Command::Mode),
             "PASS" => Ok(Command::Pass),
+            "TOPIC" => Ok(Command::Topic),
             "PRIVMSG" => Ok(Command::Privmsg),
             _ => Ok(Command::Unknown(s.to_string()))
         }
