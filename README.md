@@ -11,7 +11,7 @@ hackerspace community https://oob.systems/
 
 The idea being that one could point irssi at an IRC "daemon" behind a .onion
 address, and have access to the channels that are local to a homeserver. Joining
-#the-oob would result in the user's matrix user joining #the-oob:oob.systems, if
+\#the-oob would result in the user's matrix user joining \#the-oob:oob.systems, if
 the IRCd is pointed to serve up the oob.systems namespace. Users can use SASL
 auth to login with their existing oob.systems matrix account.
 
