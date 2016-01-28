@@ -67,6 +67,10 @@ header {
   font-size: small;
 }
 
+.example a {
+  color: #000;
+}
+
 .get-it-now {
   border-top: 3px solid #AE00AE;
 }
@@ -90,14 +94,15 @@ header {
 
     <div class="row">
       <div class="large-4 columns label">
-        <h2>An IRC gateway to <a href="https://matrix.org">Matrix</a></h2>
+        <h2>An IRCd backed by <a href="https://matrix.org">Matrix</a></h2>
         <div class="get-it-now">
           <h3>Get it now:</h3>
           <div class="example">
             $ git clone <a href="https://github.com/tdfischer/pto">git://github.com/tdfischer/pto</a><br />
-            $ cd pto && cargo build <br />
+            $ cd pto && <a href="https://crates.io">cargo</a> build <br />
             $ ./target/debug/pto \<br />
-            &nbsp;&nbsp;https://matrix.org/_matrix/client/api/v1/<br />
+            &nbsp;&nbsp;<a
+              href="https://matrix.org">https://matrix.org/_matrix/client/api/v1/</a><br />
           </div>
           <p>
           <p>If you find PTO useful, tell others about it!
@@ -115,16 +120,19 @@ header {
           href="https://matrix.org">Matrix.org</a>
         <h3>Features</h3>
         <ul>
-          <li>Tiny static binary - No need to install Node JS packages, figure
+          <li><strong>Tiny static binary</strong> - No need to install Node JS packages, figure
           out build dependencies, or debug environment bugs.  Drop the binary on
           a server (or build from scratch with Rust + Cargo) and be up and
           running in seconds.</li>
-          <li>Free Software - PTO uses the Apache license, which guarantees your
-          right to modify it for your community</li>
-          <li>Backed by Matrix - The most advanced communications platform in
-          the world. Think of it as XMPP or IRC without all the headaches of
-          XML, port forwarding, and other problems that web has virtually done
-          away with by now.</li>
+          <li><strong>Free Software</strong> - PTO uses the Apache license, which guarantees your
+          right to modify it for your community now and into the future</li>
+          <li><strong>Backed by Matrix</strong> - The most advanced communications platform in
+          the world. An open standard for decentralized persistent group
+          communication</li>
+          <li><strong>Emphasis on privacy and security</strong> - PTO is
+          designed to respect the privacy and security of its users. If it isn't
+          needed it isn't logged and it doesn't roll its own crypto. Standing on
+          the shoulders of giants!</li>
         </ul>
       </div>
     </div>
@@ -134,7 +142,7 @@ header {
         <img src="rust-logo-blk.svg" width="128" height="128">
       </div>
       <div class="large-11 columns">
-          <p><a href="https://rust-lang.org">Crafted with Rust</a>
+          <p><a href="https://rust-lang.org">Crafted with Rust</a>. Built on <a href="https://matrix.org">Matrix</a>. Only Free Software used.
           <p>Made with <span class="love">❤</span> in <a href="https://hackerbots.net">Oakland, California</a>
           <p>We love the <a href="http://contributor-covenant.org/">Contributor
             Covenant</a> and so should you.
