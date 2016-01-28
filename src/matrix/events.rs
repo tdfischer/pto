@@ -90,7 +90,7 @@ pub enum RoomEvent {
     Name(UserID, String),
     Avatar(UserID, String),
     Topic(UserID, String),
-    Unknown(Json)
+    Unknown(String, Json)
 }
 
 #[derive(Debug)]
@@ -104,16 +104,41 @@ pub enum EventData {
     Room(RoomID, RoomEvent),
     Typing(TypingEvent),
     Presence(PresenceEvent),
-    Unknown(Json)
+    Unknown(String, Json)
 }
 
 impl EventData {
-    pub fn type_str(&self) -> &'static str {
+    pub fn type_str(&self) -> String {
         match self {
-            &EventData::Room(_, RoomEvent::Message(_, _)) => {
-                "m.room.message"
-            },
-            _ => unreachable!()
+            &EventData::Room(_, RoomEvent::Message(_, _)) =>
+                "m.room.message".to_string(),
+            &EventData::Room(_, RoomEvent::CanonicalAlias(_)) =>
+                "m.room.canonical_alias".to_string(),
+            &EventData::Room(_, RoomEvent::JoinRules(_)) =>
+                "m.room.join_rules".to_string(),
+            &EventData::Room(_, RoomEvent::Membership(_, _)) =>
+                "m.room.member".to_string(),
+            &EventData::Room(_, RoomEvent::HistoryVisibility(_)) =>
+                "m.room.history_visibility".to_string(),
+            &EventData::Room(_, RoomEvent::Create )=>
+                "m.room.create".to_string(),
+            &EventData::Room(_, RoomEvent::Aliases(_)) =>
+                "m.room.aliases".to_string(),
+            &EventData::Room(_, RoomEvent::PowerLevels) =>
+                "m.room.power_levels".to_string(),
+            &EventData::Room(_, RoomEvent::Name(_, _)) =>
+                "m.room.name".to_string(),
+            &EventData::Room(_, RoomEvent::Avatar(_, _)) =>
+                "m.room.avatar".to_string(),
+            &EventData::Room(_, RoomEvent::Topic(_, _)) =>
+                "m.room.topic".to_string(),
+            &EventData::Room(_, RoomEvent::Unknown(ref unknown_type, _)) =>
+                format!("m.room.{}", unknown_type),
+            &EventData::Typing(_) =>
+                "m.typing".to_string(),
+            &EventData::Presence(_) =>
+                "m.presence".to_string(),
+            &EventData::Unknown(ref unknown_type, _) => unknown_type.clone()
         }
     }
 
@@ -157,7 +182,7 @@ impl Event {
         if tokens[0] != "m" {
             Event {
                 id: id,
-                data: EventData::Unknown(json.clone()),
+                data: EventData::Unknown(json.as_object().unwrap().get("type").unwrap().as_string().unwrap().to_string(), json.clone()),
             }
         } else {
             Event {
@@ -175,7 +200,7 @@ impl Event {
                             presence: mjson::string(json, "content.presence").to_string(),
                             user: UserID::from_str(mjson::string(json, "content.user_id"))
                         }),
-                    e => panic!("Unknown event {:?}!\nRaw JSON: {:?}", e, json)
+                    e => panic!("Unknown matrix event {:?}!\nRaw JSON: {:?}", e, json)
                 }
             }
         }
@@ -218,7 +243,7 @@ impl Event {
                     RoomEvent::Topic(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.topic").to_string()),
                 "avatar" =>
                     RoomEvent::Avatar(UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.url").to_string()),
-                _ => RoomEvent::Unknown(json.clone())
+                unknown_type => RoomEvent::Unknown(unknown_type.to_string(), json.clone())
             }
         )
     }

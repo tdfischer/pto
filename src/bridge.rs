@@ -145,8 +145,9 @@ impl Room {
             matrix::events::RoomEvent::HistoryVisibility(_) => (),
             matrix::events::RoomEvent::Name(_, _) => (),
             matrix::events::RoomEvent::Avatar(_, _) => (),
-            matrix::events::RoomEvent::Unknown(json) => {
-                warn!("Unknown room event: {:?}", json);
+            matrix::events::RoomEvent::Unknown(unknown_type, json) => {
+                warn!("Unknown room event {}", unknown_type);
+                trace!("raw event: {:?}", json);
             }
             _ => self.handle_with_alias(evt, &mut callback)
         };
@@ -208,7 +209,7 @@ impl Bridge {
                     matrix::events::EventData::Room(room_id, room_event) => {
                         self.room_from_matrix(&room_id).handle_event(room_event, append_msg);
                     },
-                    _ => warn!("Unhandled {:?}", evt)
+                    _ => warn!("Unhandled {}", evt.data.type_str())
                 }
             }
             match evt.id {
