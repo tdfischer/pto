@@ -33,11 +33,13 @@ You'll need the following ingredients:
 
 Once those two are installed, you can build PTO as follows:
 
-$ cargo build
+  ``$ cargo build``
 
 PTO can then be ran:
 
-$ cargo run
+  ``$ cargo run https://matrix.org/_matrix/client/api/v1/``
+
+Specify a different URL to use a different matrix server.
 
 Or the appropriate binary named ./target/*/pto
 
