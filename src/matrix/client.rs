@@ -31,7 +31,6 @@ mod http {
             match res.status  {
                 hyper::status::StatusCode::Ok =>  {
                     res.read_to_string(&mut response).expect("Could not read response");
-                    trace!("<<< {}", response);
                     Json::from_str(response.trim()).map_err(|err|{
                         ClientError::Json(err)
                     })
@@ -50,10 +49,10 @@ pub struct AsyncPoll {
 impl AsyncPoll {
     pub fn send(self) -> Result<Vec<events::Event>> {
         http::json(self.http.get(self.url)).and_then(|json| {
-            debug!("Response! {:?}", json);
             let mut ret: Vec<events::Event> = vec![];
             let events = mjson::array(&json, "chunk");
             for ref evt in events {
+                trace!("<<< {}", evt);
                 ret.push(events::Event::from_json(evt))
             }
             Ok(ret)
@@ -170,6 +169,7 @@ impl Client {
             for ref r in rooms {
                 let room_state = mjson::array(r, "state");
                 for ref evt in room_state {
+                    trace!("<<< {}", evt);
                     callback(events::Event::from_json(evt));
                 };
             }
