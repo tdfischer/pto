@@ -1,0 +1,147 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Perpetually Talking Online</title>
+    <link rel="stylesheet" href="css/foundation.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link href="https://fonts.googleapis.com/css?family=Pacifico" rel="stylesheet" type="text/css">
+  </head>
+  <style>
+<!--
+body, h2 {
+  font-family: 'Consolas', monospace;
+}
+
+h1 {
+  font-family: 'Pacifico', cursive;
+}
+
+#masthead {
+  background: linear-gradient(to bottom, #AE00AE 0%, #E60046 100%);
+  color: #fff;
+}
+
+#masthead {
+  max-width: 100%;
+}
+
+#masthead h1 {
+  margin: 1.2em 0;
+  line-height: 1em;
+  text-align: center;
+  font-size: 5em;
+  text-shadow: 2px 2px #000;
+  position: relative;
+}
+
+#masthead .bubble {
+  transform: rotate(12deg);
+  display: inline;
+  position: relative;
+  left: -2ex;
+  top: -0.5em;
+}
+
+.label h2 {
+  text-align: center;
+}
+
+.label {
+  background-color: #000;
+  color: #fff;
+  padding: 1em;
+  border: 3px solid #222;
+}
+
+header {
+  margin-bottom: 1em;
+  border-bottom: 3px #AE00AE solid;
+}
+
+.example {
+  background-color: #888;
+  padding: 1em;
+  font-size: small;
+}
+
+.get-it-now {
+  border-top: 3px solid #AE00AE;
+}
+
+.get-it-now h3 {
+  text-align: center;
+}
+
+.love {
+  color: #f00;
+}
+-->
+  </style>
+  <body>
+
+    <header class="row" id="masthead">
+      <div class="large-12 columns">
+        <h1>Perpetually Talking Online <span class="bubble">💬</div></h1>
+      </div>
+    </header>
+
+    <div class="row">
+      <div class="large-4 columns label">
+        <h2>An IRC gateway to <a href="https://matrix.org">Matrix</a></h2>
+        <div class="get-it-now">
+          <h3>Get it now:</h3>
+          <div class="example">
+            $ git clone git://github.com/tdfischer/pto<br />
+            $ cd pto && cargo build <br />
+            $ ./target/debug/pto \<br />
+            &nbsp;&nbsp;https://matrix.org/_matrix/client/api/v1/<br />
+          </div>
+          <p>If you find PTO useful, tell others about it!
+        </div>
+      </div>
+      <div class="large-8 columns content">
+        <p><strong>Perpetually Talking Online</strong> (PTO) is an IRC frontend to the federated 
+        Matrix network. It aims to enable as many people as possible to use an
+        existing Matrix homeserver with their existing IRC clients, and provides
+        a radically expanded feature set for existing IRC communities looking to
+        migrate to Matrix.
+        <p>For more information about Matrix, check out <a
+          href="https://matrix.org">Matrix.org</a>
+        <h3>Features</h3>
+        <ul>
+          <li>Tiny static binary - No need to install Node JS packages, figure
+          out build dependencies, or debug environment bugs.  Drop the binary on
+          a server (or build from scratch with Rust + Cargo) and be up and
+          running in seconds.</li>
+          <li>Free Software - PTO uses the Apache license, which guarantees your
+          right to modify it for your community</li>
+          <li>Backed by Matrix - The most advanced communications platform in
+          the world. Think of it as XMPP or IRC without all the headaches of
+          XML, port forwarding, and other problems that web has virtually done
+          away with by now.</li>
+        </ul>
+      </div>
+    </div>
+    
+    <footer class="row">
+      <div class="large-1 columns">
+        <img src="rust-logo-blk.svg" width="128" height="128">
+      </div>
+      <div class="large-11 columns">
+          <p><a href="https://rust-lang.org">Crafted with Rust</a>
+          <p>Made with <span class="love">❤</span> in <a href="https://hackerbots.net">Oakland, California</a>
+          <p>We love the <a href="http://contributor-covenant.org/">Contributor
+            Covenant</a> and so should you.
+      </div>
+    </footer>
+
+
+    <script src="js/vendor/jquery.min.js"></script>
+    <script src="js/vendor/what-input.min.js"></script>
+    <script src="js/foundation.min.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
