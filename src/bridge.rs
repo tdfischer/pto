@@ -127,14 +127,6 @@ impl Room {
             matrix::events::RoomEvent::CanonicalAlias(name) => {
                 let was_empty = self.canonical_alias == None;
                 self.canonical_alias = Some(name.clone());
-                for ref user in &self.members {
-                    callback(irc::protocol::Message {
-                        prefix: Some(format!("{}@anony.oob", user.nickname)),
-                        command: irc::protocol::Command::Join,
-                        args: vec![self.canonical_alias.clone().unwrap()],
-                        suffix: None
-                    });
-                };
                 if was_empty {
                     self.run_pending(&mut callback);
                 }
