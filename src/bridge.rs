@@ -134,7 +134,13 @@ impl Room {
             matrix::events::RoomEvent::JoinRules(rules) =>
                 self.join_rules = Some(rules.clone()),
             matrix::events::RoomEvent::Create => (),
-            matrix::events::RoomEvent::Aliases => (),
+            matrix::events::RoomEvent::Aliases(aliases) => {
+                let is_empty = self.canonical_alias == None;
+                if is_empty {
+                    self.canonical_alias = Some(aliases[0].clone());
+                    self.run_pending(&mut callback);
+                }
+            },
             matrix::events::RoomEvent::PowerLevels => (),
             matrix::events::RoomEvent::HistoryVisibility(_) => (),
             matrix::events::RoomEvent::Name(_, _) => (),

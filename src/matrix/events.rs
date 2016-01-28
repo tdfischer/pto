@@ -84,7 +84,7 @@ pub enum RoomEvent {
     Membership(UserID, MembershipAction),
     HistoryVisibility(String),
     Create,
-    Aliases,
+    Aliases(Vec<String>),
     Message(UserID, String),
     PowerLevels,
     Name(UserID, String),
@@ -200,8 +200,14 @@ impl Event {
                     RoomEvent::HistoryVisibility(mjson::string(json, "content.history_visibility").to_string()),
                 "create" =>
                     RoomEvent::Create,
-                "aliases" =>
-                    RoomEvent::Aliases,
+                "aliases" => {
+                    let aliases = mjson::array(json, "content.aliases");
+                    let mut alias_list: Vec<String> = vec![];
+                    for alias in aliases {
+                        alias_list.push(alias.as_string().unwrap().to_string());
+                    }
+                    RoomEvent::Aliases(alias_list)
+                },
                 "power_levels" =>
                     RoomEvent::PowerLevels,
                 "message" =>
