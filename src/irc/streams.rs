@@ -33,8 +33,10 @@ impl Client {
 
     pub fn read_message(&mut self) -> Option<Message> {
         match self.line_reader.read(&mut self.stream) {
-            Some(line) =>
-                Some(Message::from_str(line.trim())),
+            Some(line) => {
+                trace!("<< {}", line);
+                Some(Message::from_str(line.trim()))
+            },
             None => None
         }
     }
@@ -67,6 +69,7 @@ impl Client {
     }
 
     pub fn send(&mut self, message: &Message) -> io::Result<usize> {
+        trace!(">>> {}", message.to_string());
         self.stream.write(&message.to_string().trim().as_bytes())
             .and(self.stream.write("\r\n".as_bytes()))
     }

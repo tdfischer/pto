@@ -1,6 +1,9 @@
 extern crate rustc_serialize;
 extern crate hyper;
 extern crate mio;
+extern crate env_logger;
+#[macro_use]
+extern crate log;
 mod irc;
 mod matrix;
 mod bridge;
@@ -39,10 +42,11 @@ impl Handler for IrcHandler {
 const SERVER: Token = Token(0);
 
 fn main() {
+    env_logger::init().unwrap();
     let addr = "127.0.0.1:8001".parse().unwrap();
     let url =  env::args().nth(1).unwrap();
     let server = irc::streams::Server::new(&addr);
-    println!("Listening on 127.0.0.1:8001");
+    info!("Listening on 127.0.0.1:8001");
     let mut events = EventLoop::new().unwrap();
     events.register(server.listener(), SERVER, EventSet::all(), PollOpt::edge()).unwrap();
     events.run(&mut IrcHandler{

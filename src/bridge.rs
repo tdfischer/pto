@@ -34,7 +34,6 @@ impl Handler for Bridge {
     }
 
     fn notify(&mut self, event_loop: &mut EventLoop<Bridge>, msg: Self::Message) {
-        println!("Got message from matrix! {:?}", msg);
         match msg {
             Event::EndPoll => {
                 self.poll_matrix(event_loop.channel());
@@ -114,7 +113,7 @@ impl Room {
                 },
                 matrix::events::RoomEvent::CanonicalAlias(_) => unreachable!(),
                 _ => {
-                    println!("Unhandled event {:?}", evt)
+                    warn!("Unhandled event {:?}", evt)
                 }
             }
         } else {
@@ -149,7 +148,7 @@ impl Room {
             matrix::events::RoomEvent::Name(_, _) => (),
             matrix::events::RoomEvent::Avatar(_, _) => (),
             matrix::events::RoomEvent::Unknown(json) => {
-                println!("Unknown room event: {:?}", json);
+                warn!("Unknown room event: {:?}", json);
             }
             _ => self.handle_with_alias(evt, &mut callback)
         };
@@ -211,7 +210,7 @@ impl Bridge {
                     matrix::events::EventData::Room(room_id, room_event) => {
                         self.room_from_matrix(&room_id).handle_event(room_event, append_msg);
                     },
-                    _ => println!("Unhandled {:?}", evt)
+                    _ => warn!("Unhandled {:?}", evt)
                 }
             }
             match evt.id {
@@ -254,7 +253,6 @@ impl Bridge {
             match self.client.read_message() {
                 None => return,
                 Some(message) => {
-                    println!("Got a message! {:?}", message);
                     match message.command {
                         Command::Pass => {
                             self.client.auth.set_password(message.args[0].clone())
@@ -263,7 +261,6 @@ impl Bridge {
                             self.client.set_nickname(message.args[0].clone());
                         },
                         Command::User => {
-                            println!("User logged in: {}", message.args[0]);
                             self.client.auth.set_username(message.args[0].clone());
                             let auth = self.client.auth.consume();
                             match (auth.username, auth.password) {
@@ -272,7 +269,7 @@ impl Bridge {
                                         .and(self.start_matrix(events.channel()))
                                         .and_then(|_| {
                                             self.client.welcome(username.trim()).unwrap();
-                                            println!("Logged in {:?}", username);
+                                            debug!("Logged in a user");
                                             Ok(())
                                         }).expect("Could not login!");
                                 },
@@ -301,7 +298,7 @@ impl Bridge {
                             self.seen_events.push(self.matrix.send(evt).expect("Could not send event"));
                         },
                         _ =>
-                            println!("unhandled {:?}", message)
+                            warn!("unhandled {:?}", message)
                     }
                 }
             }

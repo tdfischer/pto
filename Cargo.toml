@@ -7,3 +7,5 @@ authors = ["Torrie Fischer <tdfischer@hackerbots.net>"]
 hyper = '*'
 rustc-serialize = '*'
 mio = '*'
+log = '*'
+env_logger = '*'

@@ -31,6 +31,7 @@ mod http {
             match res.status  {
                 hyper::status::StatusCode::Ok =>  {
                     res.read_to_string(&mut response).expect("Could not read response");
+                    trace!("<<< {}", response);
                     Json::from_str(response.trim()).map_err(|err|{
                         ClientError::Json(err)
                     })
@@ -49,7 +50,7 @@ pub struct AsyncPoll {
 impl AsyncPoll {
     pub fn send(self) -> Result<Vec<events::Event>> {
         http::json(self.http.get(self.url)).and_then(|json| {
-            println!("Response! {:?}", json);
+            debug!("Response! {:?}", json);
             let mut ret: Vec<events::Event> = vec![];
             let events = mjson::array(&json, "chunk");
             for ref evt in events {
@@ -96,7 +97,7 @@ impl Client {
         d.insert("user".to_string(), Json::String(username.to_string()));
         d.insert("password".to_string(), Json::String(password.to_string()));
         d.insert("type".to_string(), Json::String("m.login.password".to_string()));
-        println!("Logging in to matrix");
+        debug!("Logging in to matrix");
         http::json(self.http.post(self.url("login", &HashMap::new()))
             .body(Json::Object(d).to_string().trim()))
             .and_then(|js| {
@@ -148,19 +149,19 @@ impl Client {
                                            evt.type_str(),
                                            self.next_id).trim(),
                                    &HashMap::new());
-                println!("Sending events to {:?}", url);
+                trace!("Sending events to {:?}", url);
                 http::json(self.http.put(url).body(format!("{}", evt.to_json()).trim()))
             },
             _ => unreachable!()
         }.and_then(|response| {
-            println!("sent! {} {:?}", evt.to_json(), response);
+            trace!(">>> {} {:?}", evt.to_json(), response);
             Ok(events::EventID::from_str(mjson::string(&response, "event_id")))
         })
     }
 
     pub fn sync<F>(&mut self, callback: F) -> Result
             where F: Fn(events::Event) {
-        println!("Syncing...");
+        debug!("Syncing...");
         let mut args = HashMap::new();
         args.insert("limit", "0");
         let url = self.url("initialSync", &args);
