@@ -58,20 +58,4 @@ the IRC connection will be used to login to matrix.
 
 # TODO
 
-This whole thing is intensely a work in progress. It doesn't even do anything
-useful right now like handling messages or even listing channels.
-
-- [X] Handle IRC protocol
-- [X] Login to matrix
-- [X] Handle matrix event polling without blocking IRC thread
-- [X] Translate basic IRC events to matrix events and vice-versa
-- [ ] Create/join new channels through IRC
-- [ ] Set channel topics
-- [ ] PMs
-- [ ] Support /list command
-- [ ] Channel kicks/bans
-- [ ] Support SSL listeners
-- [ ] Send backlog on connect
-- [ ] Throw all kinds of warrnings and red flags about non-ssl configurations
-- [ ] Support logins that aren't at a given server
-- [ ] Drop all the oob.systems specific cruft
+Check out the Github issues for the project.
