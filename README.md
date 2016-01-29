@@ -1,7 +1,7 @@
-[![Stories in Ready](https://badge.waffle.io/tdfischer/pto.png?label=ready&title=Ready)](https://waffle.io/tdfischer/pto)
 # Perpetually Talking Online
 
 [![Build Status](https://travis-ci.org/tdfischer/pto.svg?branch=master)](https://travis-ci.org/tdfischer/pto)
+[![Stories in Ready](https://badge.waffle.io/tdfischer/pto.png?label=ready&title=Ready)](https://waffle.io/tdfischer/pto)
 
 An IRC to Matrix bridge.
 
