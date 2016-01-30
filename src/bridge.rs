@@ -78,7 +78,7 @@ impl Room {
             match evt {
                 matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Join) => {
                     callback(irc::protocol::Message {
-                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        prefix: Some(format!("{}@{}", user.nickname, user.homeserver)),
                         command: irc::protocol::Command::Join,
                         args: vec![self.canonical_alias.clone().unwrap()],
                         suffix: None
@@ -87,7 +87,7 @@ impl Room {
                 },
                 matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Leave) => {
                     callback(irc::protocol::Message {
-                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        prefix: Some(format!("{}@{}", user.nickname, user.homeserver)),
                         command: irc::protocol::Command::Part,
                         args: vec![self.canonical_alias.clone().unwrap()],
                         suffix: None
@@ -97,7 +97,7 @@ impl Room {
                 matrix::events::RoomEvent::Membership(_, _) => (),
                 matrix::events::RoomEvent::Message(user, text) => {
                     callback(irc::protocol::Message {
-                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        prefix: Some(format!("{}@{}", user.nickname, user.homeserver)),
                         command: irc::protocol::Command::Privmsg,
                         args: vec![self.canonical_alias.clone().unwrap()],
                         suffix: Some(text)
@@ -105,7 +105,7 @@ impl Room {
                 },
                 matrix::events::RoomEvent::Topic(user, topic) => {
                     callback(irc::protocol::Message {
-                        prefix: Some(format!("{}@anony.oob", user.nickname)),
+                        prefix: Some(format!("{}@{}", user.nickname, user.homeserver)),
                         command: irc::protocol::Command::Topic,
                         args: vec![self.canonical_alias.clone().unwrap()],
                         suffix: Some(topic.clone())
