@@ -209,6 +209,7 @@ impl Bridge {
                     matrix::events::EventData::Room(room_id, room_event) => {
                         self.room_from_matrix(&room_id).handle_event(room_event, append_msg);
                     },
+                    matrix::events::EventData::Typing(_) => (),
                     _ => warn!("Unhandled {}", evt.data.type_str())
                 }
             }
