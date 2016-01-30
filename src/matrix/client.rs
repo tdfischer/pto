@@ -158,22 +158,24 @@ impl Client {
         })
     }
 
-    pub fn sync<F>(&mut self, callback: F) -> Result
-            where F: Fn(events::Event) {
+    pub fn sync(&mut self) -> Result<Vec<events::Event>> {
         debug!("Syncing...");
         let mut args = HashMap::new();
         args.insert("limit", "0");
         let url = self.url("initialSync", &args);
         http::json(self.http.get(url)).and_then(|js| {
             let rooms = mjson::array(&js, "rooms");
+            let mut ret: Vec<events::Event> = vec![];
             for ref r in rooms {
                 let room_state = mjson::array(r, "state");
                 for ref evt in room_state {
                     trace!("<<< {}", evt);
-                    callback(events::Event::from_json(evt));
+                    // FIXME: It'd be nice to return to the previous
+                    // callback-based mechanism to avoid memory bloat
+                    ret.push(events::Event::from_json(evt));
                 };
             }
-            Ok(())
+            Ok(ret)
         })
     }
 }
