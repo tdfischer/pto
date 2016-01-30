@@ -105,7 +105,9 @@ impl Client {
                     access: obj.get("access_token").unwrap().as_string().unwrap().to_string(),
                     refresh: obj.get("refresh_token").unwrap().as_string().unwrap().to_string()
                 });
-                self.uid = Some(events::UserID::from_str(format!("@{}:{}", username, "oob.systems").trim()));
+                let url = hyper::Url::parse(self.baseurl.trim()).unwrap();
+                let domain = url.host().unwrap().serialize();
+                self.uid = Some(events::UserID::from_str(format!("@{}:{}", username, domain).trim()));
                 Ok(())
             })
     }
