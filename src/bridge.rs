@@ -267,7 +267,9 @@ impl Bridge {
                             match (auth.username, auth.password) {
                                 (Some(username), Some(password)) => {
                                     self.matrix.login(username.trim(), password.trim())
-                                        .and(self.start_matrix(events.channel()))
+                                        .and_then(|_| {
+                                            self.start_matrix(events.channel())
+                                        })
                                         .and_then(|_| {
                                             self.client.welcome(username.trim()).unwrap();
                                             debug!("Logged in a user");
