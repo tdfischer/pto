@@ -42,13 +42,19 @@ PTO can then be ran:
 
 Specify a different URL to use a different matrix server.
 
-Or the appropriate binary named ./target/*/pto
+Or the appropriate binary named ./target/\*/pto
 
 ## Configuration
 
 Currently configuration is limited to modifying hardcoded strings in various
 places. Thank you for getting this far though! I would absolutely love a patch
 <3
+
+The following are hardcoded defaults:
+
+- Listens on 127.0.0.1:8001
+- Requires SSL
+- Requires files named ./pto.crt and ./pto.key for a SSL certificate and key, respectively
 
 ## Usage
 
