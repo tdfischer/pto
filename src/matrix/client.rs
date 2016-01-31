@@ -82,6 +82,9 @@ impl fmt::Debug for Client {
 
 impl Client {
     pub fn new(baseurl: &str) -> Self {
+        if !baseurl.starts_with("https") {
+            warn!("YOU ARE CONNECTING TO A MATRIX SERVER WITHOUT SSL");
+        }
         Client {
             http: hyper::Client::new(),
             token: None,
