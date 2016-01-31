@@ -166,7 +166,7 @@ impl Bridge {
         }
     }
 
-    pub fn room_from_irc(&mut self, id: &String) -> &mut Room {
+    pub fn room_from_irc(&mut self, id: &String) -> Option<&mut Room> {
         let mut room_id: Option<matrix::events::RoomID> = None;
         for (_, r) in self.rooms.iter_mut() {
             if let Some(ref alias) = r.canonical_alias {
@@ -175,7 +175,10 @@ impl Bridge {
                 }
             }
         }
-        self.room_from_matrix(&room_id.unwrap())
+        match room_id {
+            Some(id) => Some(self.room_from_matrix(&id)),
+            None => None
+        }
     }
 
     pub fn new(client: irc::streams::Client, url: &str) -> Self {
@@ -290,11 +293,14 @@ impl Bridge {
                             return;
                         },
                         Command::Privmsg => {
+                            let room_id = match self.room_from_irc(&message.args[0]) {
+                                None => return (),
+                                Some(room) => room.id.clone()
+                            };
                             let evt = {
                                 let id = self.matrix.uid.clone().unwrap();
-                                let room = self.room_from_irc(&message.args[0]);
                                 matrix::events::EventData::Room(
-                                    room.id.clone(),
+                                    room_id,
                                     matrix::events::RoomEvent::Message(
                                         id, message.suffix.unwrap()))
                             };
