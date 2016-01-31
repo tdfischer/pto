@@ -240,7 +240,6 @@ impl Bridge {
 
     fn start_matrix(&mut self, channel: mio::Sender<Event>) ->
         matrix::client::Result {
-        let mut events: Vec<matrix::events::Event> = vec![];
         self.matrix.sync().and_then(|events| {
             for e in events {
                 self.handle_matrix(e);
