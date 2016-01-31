@@ -8,7 +8,8 @@ An IRC to Matrix bridge.
 This is different from the existing appservice on matrix.org. This work in
 progress allows IRC users to join a matrix community. Its just a readme/vague
 requirements document right now but code is being hacked on! Its for the
-hackerspace community https://oob.systems/
+hackerspace community https://oob.systems/. Come join us in
+#pto:oob.systems.
 
 The idea being that one could point irssi at an IRC "daemon" behind a .onion
 address, and have access to the channels that are local to a homeserver. Joining
