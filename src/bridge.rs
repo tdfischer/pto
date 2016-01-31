@@ -189,7 +189,7 @@ impl Bridge {
 
     pub fn run(&mut self) {
         let mut events = EventLoop::new().unwrap();
-        events.register(self.client.stream(), CLIENT, EventSet::all(), PollOpt::edge()).unwrap();
+        events.register(self.client.stream().get_ref(), CLIENT, EventSet::all(), PollOpt::edge()).unwrap();
         events.run(self).unwrap();
     }
 

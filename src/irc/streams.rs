@@ -3,13 +3,15 @@ use std::net::SocketAddr;
 use std::io::Write;
 use std::io;
 
+use openssl::ssl::{SslContext, SslStream};
+
 use irc::util::LineReader;
 use irc::protocol::*;
 use irc::security::AuthSession;
 
 #[derive(Debug)]
 pub struct Client {
-    stream: TcpStream,
+    stream: SslStream<TcpStream>,
     line_reader: LineReader,
     nickname: Option<String>,
     username: Option<String>,
@@ -17,7 +19,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(stream: TcpStream) -> Self {
+    pub fn new(stream: SslStream<TcpStream>) -> Self {
         Client {
             stream: stream,
             line_reader: LineReader::new(),
@@ -27,7 +29,7 @@ impl Client {
         }
     }
 
-    pub fn stream(&self) -> &TcpStream {
+    pub fn stream(&self) -> &SslStream<TcpStream> {
         &self.stream
     }
 
@@ -77,20 +79,24 @@ impl Client {
 
 pub struct Server {
     listener: TcpListener,
+    ssl: SslContext
 }
 
 impl Server {
-    pub fn new(addr: &SocketAddr) -> Self {
+    pub fn new(addr: &SocketAddr, ssl: SslContext) -> Self {
         Server {
             listener: TcpListener::bind(addr).unwrap(),
+            ssl: ssl
         }
     }
 
     pub fn accept(&mut self) -> Option<Client> {
          match self.listener.accept() {
              Ok(None) => None,
-             Ok(Some((socket, _))) =>
-                 Some(Client::new(socket)),
+             Ok(Some((socket, _))) => {
+                 let ssl = SslStream::accept(&self.ssl, socket).expect("Could not construct SSL stream");
+                 Some(Client::new(ssl))
+             },
              Err(e) => panic!(e),
          }
     }

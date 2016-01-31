@@ -2,6 +2,7 @@ extern crate rustc_serialize;
 extern crate hyper;
 extern crate mio;
 extern crate env_logger;
+extern crate openssl;
 #[macro_use]
 extern crate log;
 mod irc;
@@ -11,6 +12,9 @@ use mio::{EventLoop,Handler,Token,EventSet,PollOpt};
 use std::thread;
 use bridge::Bridge;
 use std::env;
+use std::path::Path;
+use openssl::ssl::{SslContext, SslMethod};
+use openssl::x509::X509FileType;
 
 struct IrcHandler {
     server: irc::streams::Server,
@@ -45,7 +49,10 @@ fn main() {
     env_logger::init().unwrap();
     let addr = "127.0.0.1:8001".parse().unwrap();
     let url =  env::args().nth(1).unwrap();
-    let server = irc::streams::Server::new(&addr);
+    let mut ssl = SslContext::new(SslMethod::Sslv23).expect("SSL setup failed");
+    ssl.set_certificate_file(Path::new("pto.crt"), X509FileType::PEM).expect("Could not load pto.crt");
+    ssl.set_private_key_file(Path::new("pto.key"), X509FileType::PEM).expect("Could not load pto.key");
+    let server = irc::streams::Server::new(&addr, ssl);
     info!("Listening on 127.0.0.1:8001");
     let mut events = EventLoop::new().unwrap();
     events.register(server.listener(), SERVER, EventSet::all(), PollOpt::edge()).unwrap();
