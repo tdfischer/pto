@@ -154,7 +154,11 @@ impl Client {
                                            self.next_id).trim(),
                                    &HashMap::new());
                 trace!("Sending events to {:?}", url);
-                http::json(self.http.put(url).body(format!("{}", evt.to_json()).trim()))
+                // FIXME: This seems needed since hyper will pool HTTP client
+                // connections for pipelining. Sometimes the server will close
+                // the pooled connection and everything will catch on fire here.
+                let http = hyper::client::Client::new();
+                http::json(http.put(url).body(format!("{}", evt.to_json()).trim()))
             },
             _ => unreachable!()
         }.and_then(|response| {
