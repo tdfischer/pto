@@ -262,7 +262,11 @@ impl Bridge {
                             self.client.auth.set_password(message.args[0].clone())
                         }
                         Command::Nick => {
-                            self.client.set_nickname(message.args[0].clone());
+                            let nickname = match message.suffix {
+                                None => message.args[0].clone(),
+                                Some(n) => n
+                            };
+                            self.client.set_nickname(nickname)
                         },
                         Command::User => {
                             self.client.auth.set_username(message.args[0].clone());
