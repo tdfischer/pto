@@ -5,14 +5,19 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Perpetually Talking Online</title>
-    <link rel="stylesheet" href="css/foundation.css" />
+    <link rel="stylesheet" href="css/foundation-flex.css" />
     <link rel="stylesheet" href="css/app.css" />
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Pacifico" rel="stylesheet" type="text/css">
   </head>
   <style>
 <!--
-body, h2 {
-  font-family: 'Consolas', monospace;
+body {
+  font-family: 'Source Sans Pro';
+}
+
+footer {
+  margin-bottom: 1em;
 }
 
 h1 {
@@ -65,6 +70,27 @@ header {
   background-color: #888;
   padding: 1em;
   font-size: small;
+  font-family: 'Consolas', monospace;
+}
+
+.row#masthead {
+  margin-top: 0;
+}
+
+.why {
+  background: #E60046 url(wires.svg) center center no-repeat;
+  color: #fff;
+  max-width: 100%;
+  padding-top: 1.5em;
+  padding-bottom: 1.5em;
+  margin-top: 2em;
+  margin-bottom: 2em;
+  text-align: justify;
+  text-justify: inter-word;
+}
+
+.why h2 {
+  text-align: center;
 }
 
 .example a {
@@ -82,13 +108,38 @@ header {
 .love {
   color: #f00;
 }
+
+.why .irc {
+  background: url(irc-icon.svg) no-repeat center center;
+}
+
+.why .matrix {
+  background: url(matrix-bg.svg) no-repeat center center;
+}
+
+.why .pto {
+  background: url(pto.svg) no-repeat center center;
+  animation: wiggle 2s ease-in-out infinite;
+}
+
+@keyframes wiggle {
+  0% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+  100% {
+    transform: rotate(-5deg);
+  }
+}
 -->
   </style>
   <body>
 
     <header class="row" id="masthead">
       <div class="large-12 columns">
-        <h1>Perpetually Talking Online <span class="bubble">💬</div></h1>
+        <h1>Perpetually Talking Online <span class="bubble">💬</span></h1>
       </div>
     </header>
 
@@ -118,7 +169,7 @@ header {
         migrate to Matrix.
         <p>For more information about Matrix, check out <a
           href="https://matrix.org">Matrix.org</a>
-        <p>The PTO matrix channel is known as #pto:oob.systems.
+        <p>The PTO matrix channel is <strong>#pto:oob.systems</strong>.
         <h3>Features</h3>
         <ul>
           <li><strong>Tiny static binary</strong> - No need to install Node JS packages, figure
@@ -137,12 +188,50 @@ header {
         </ul>
       </div>
     </div>
+
+    <div class="why">
+    <div class="row align-stretch">
+      <div class="large-5 column irc">
+        <h2>We already use IRC. Why would we want this?</h2>
+        <p>Think of PTO as your <em>zero maintenence IRC daemon</em>. No need for running
+        services. Get free channel backlog replay on connect. Reuse the existing
+        authentication mechanism in your Matrix installation. Tear down the
+        walls on your walled garden with Matrix federation (if you want). Enable
+        push notifications to devices through Synapse and other mechanisms.
+        <p>With Matrix, there is no separate IRC daemon to provide IRC services.
+        It is built in to the network and PTO plays along like nothing is
+        different.
+      </div>
+      <div class="large-2 pto">
+      </div>
+      <div class="large-5 column matrix">
+        <h2>We already use Matrix. Why would we want this?</h2>
+        <p>Not everyone uses Matrix, meaning those without it can't get
+        connected. It is a new technology though adoption of it is growing. Lots
+        of users in the world have existing IRC clients that already have
+        countless hours of energy poured into their configurations and tweaks.
+        Lets face it, people like to use the tools they're familiar with the
+        most.
+        <p>PTO lets your users bring their own client. No need to squeeze them
+        through a funnel in trying to get them to keep a browser tab open or
+        install <em>yet another</em> chatting application. PTO tries its hardest to
+        make the boundary between Matrix and IRC dissolve unnoticably.
+      </div>
+    </div>
+    <div class="row">
+      <div class="large-12" style="text-align: center">
+        <h1>PTO connects everyone together</h1>
+      </div>
+    </div>
+    </div>
     
     <footer class="row">
-      <div class="large-1 columns">
-        <img src="rust-logo-blk.svg" width="128" height="128">
+      <div class="large-2 columns" style="text-align: center">
+        <a href="https://www.rust-lang.org"><img src="rust-logo-blk.svg" width="128" height="128"></a>
+        <a href="https://matrix.org"><img src="made-with-matrix.svg" width="100%"></a>
       </div>
-      <div class="large-11 columns">
+      <div class="large-10 columns">
+          <p>
           <p><a href="https://www.rust-lang.org">Crafted with Rust</a>. Built on <a href="https://matrix.org">Matrix</a>. Only Free Software used.
           <p>Made with <span class="love">❤</span> in <a href="https://hackerbots.net">Oakland, California</a>
           <p>We love the <a href="http://contributor-covenant.org/">Contributor
