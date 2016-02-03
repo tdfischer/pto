@@ -216,7 +216,8 @@ impl Event {
                             presence: mjson::string(json, "content.presence").to_string(),
                             user: UserID::from_str(mjson::string(json, "content.user_id"))
                         }),
-                    e => panic!("Unknown matrix event {:?}!\nRaw JSON: {:?}", e, json)
+                    e =>
+                        EventData::Unknown(e.to_string(), json.clone())
                 }
             }
         }
