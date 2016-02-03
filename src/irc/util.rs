@@ -56,11 +56,18 @@ impl LineReader {
                 new_str = self.linebuf.clone();
                 split = new_str .split_at(idx);
             },
-            None =>
-                return None
-
+            None => {
+                match self.linebuf.find("\n") {
+                    Some(idx) => {
+                        new_str = self.linebuf.clone();
+                        split = new_str .split_at(idx);
+                    },
+                    None =>
+                        return None
+                }
+            }
         }
-        self.linebuf = split.1[2..].to_string().clone();
+        self.linebuf = split.1[1..].to_string().clone();
         Some(split.0.to_string())
     }
 }
