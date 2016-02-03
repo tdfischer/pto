@@ -21,6 +21,7 @@ use mio;
 use mio::{EventLoop,Handler,Token,EventSet,PollOpt,Sender};
 use std::thread;
 use std::collections::HashMap;
+use std::io;
 
 const CLIENT: Token = Token(0);
 
@@ -55,7 +56,10 @@ impl Handler for Bridge {
                 self.poll_matrix(event_loop.channel());
             },
             Event::Matrix(e) =>
-                self.handle_matrix(e)
+                match self.handle_matrix(e) {
+                    Err(err) => warn!("Could not handle matrix event: {:?}", err),
+                    _ => ()
+                }
         };
     }
 }
@@ -212,7 +216,7 @@ impl Bridge {
         events.run(self).unwrap();
     }
 
-    fn handle_matrix(&mut self, evt: matrix::events::Event) {
+    fn handle_matrix(&mut self, evt: matrix::events::Event) -> io::Result<usize> {
         let duplicate = match evt.id {
             Some(ref id) =>
                 self.seen_events.contains(id),
@@ -237,9 +241,19 @@ impl Bridge {
                     self.seen_events.push(id),
                 None => ()
             };
+            let mut res: Option<io::Result<usize>> = None;
             for ref msg in messages {
-                self.client.send(msg).unwrap();
+                res = Some(match res {
+                    None => self.client.send(msg),
+                    Some(r) => r.and(self.client.send(msg))
+                })
             }
+            match res {
+                None => Ok(0),
+                Some(e) => e
+            }
+        } else {
+            Ok(0)
         }
     }
 
@@ -261,7 +275,11 @@ impl Bridge {
         matrix::client::Result {
         self.matrix.sync().and_then(|events| {
             for e in events {
-                self.handle_matrix(e);
+                match self.handle_matrix(e) {
+                    // FIXME: Return error
+                    Err(err) => warn!("Could not handle matrix event: {:?}", err),
+                    _ => ()
+                }
             }
             self.poll_matrix(channel);
             Ok(())
