@@ -46,7 +46,7 @@ impl Handler for Bridge {
         match token {
             CLIENT =>
                 self.handle_client(event_loop),
-            _ => unreachable!()
+            _ => unreachable!("Got a really weird Token in the mio event loop!")
         }
     }
 
@@ -131,7 +131,7 @@ impl Room {
                         suffix: Some(topic.clone())
                     });
                 },
-                matrix::events::RoomEvent::CanonicalAlias(_) => unreachable!(),
+                matrix::events::RoomEvent::CanonicalAlias(_) => unreachable!("canonical_alias should have been handled already!"),
                 _ => {
                     warn!("Unhandled event {:?}", evt)
                 }
@@ -182,7 +182,7 @@ impl Bridge {
         }
         match self.rooms.get_mut(id) {
             Some(room) => room,
-            None => unreachable!()
+            None => unreachable!("Couldn't find the room that we just created")
         }
     }
 
@@ -317,7 +317,7 @@ impl Bridge {
                                             Ok(())
                                         }).expect("Could not login!");
                                 },
-                                _ => panic!("Username and/or password missing")
+                                _ => panic!("Username and/or password missing, and anonymous access isn't built yet.")
                             };
                         },
                         Command::Join => {

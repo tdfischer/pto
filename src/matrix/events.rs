@@ -167,10 +167,10 @@ impl EventData {
                         ret.insert("msgtype".to_string(), json::Json::String("m.text".to_string()));
                         ret.insert("body".to_string(), json::Json::String(text.clone()));
                     },
-                    _ => unreachable!()
+                    _ => panic!("Can only serialize m.room.message events :(")
                 }
             },
-            _ => unreachable!()
+            _ => panic!("Can only serialize m.room.message events :(")
         }
         json::Json::Object(ret)
     }

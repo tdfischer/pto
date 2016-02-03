@@ -181,7 +181,7 @@ impl Client {
                 http.set_redirect_policy(hyper::client::RedirectPolicy::FollowAll);
                 http::json(http.put(url).body(format!("{}", evt.to_json()).trim()))
             },
-            _ => unreachable!()
+            _ => panic!("Don't know where to send {}", evt.to_json())
         }.and_then(|response| {
             trace!(">>> {} {:?}", evt.to_json(), response);
             Ok(events::EventID::from_str(mjson::string(&response, "event_id")))

@@ -53,7 +53,7 @@ impl Handler for IrcHandler {
                     None => ()
                 }
             },
-            _ => unreachable!()
+            _ => unreachable!("Got a really weird token in the server event loop!")
         }
     }
 }
