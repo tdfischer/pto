@@ -101,8 +101,10 @@ impl Client {
         if !baseurl.starts_with("https") {
             warn!("YOU ARE CONNECTING TO A MATRIX SERVER WITHOUT SSL");
         }
+        let mut http  = hyper::Client::new();
+        http.set_redirect_policy(hyper::client::RedirectPolicy::FollowAll);
         Client {
-            http: hyper::Client::new(),
+            http: http,
             token: None,
             next_id: 0,
             baseurl: baseurl.to_string(),
@@ -154,8 +156,10 @@ impl Client {
 
     pub fn poll_async(&mut self) -> AsyncPoll {
         let url = self.url("events", &HashMap::new());
+        let mut http = hyper::client::Client::new();
+        http.set_redirect_policy(hyper::client::RedirectPolicy::FollowAll);
         AsyncPoll {
-            http: hyper::client::Client::new(),
+            http: http,
             url: url
         }
     }
@@ -173,7 +177,8 @@ impl Client {
                 // FIXME: This seems needed since hyper will pool HTTP client
                 // connections for pipelining. Sometimes the server will close
                 // the pooled connection and everything will catch on fire here.
-                let http = hyper::client::Client::new();
+                let mut http = hyper::client::Client::new();
+                http.set_redirect_policy(hyper::client::RedirectPolicy::FollowAll);
                 http::json(http.put(url).body(format!("{}", evt.to_json()).trim()))
             },
             _ => unreachable!()
