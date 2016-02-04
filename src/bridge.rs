@@ -34,8 +34,8 @@ pub enum Event {
 pub struct Bridge {
     client: irc::streams::Client,
     matrix: matrix::client::Client,
-    rooms: HashMap<matrix::events::RoomID, Room>,
-    seen_events: Vec<matrix::events::EventID>,
+    rooms: HashMap<matrix::model::RoomID, Room>,
+    seen_events: Vec<matrix::model::EventID>,
 }
 
 impl Handler for Bridge {
@@ -67,15 +67,15 @@ impl Handler for Bridge {
 unsafe impl Sync for Bridge{}
 
 struct Room {
-    id: matrix::events::RoomID,
+    id: matrix::model::RoomID,
     canonical_alias: Option<String>,
     join_rules: Option<String>,
-    members: Vec<matrix::events::UserID>,
+    members: Vec<matrix::model::UserID>,
     pending_events: Vec<matrix::events::RoomEvent>
 }
 
 impl Room {
-    fn new(id: matrix::events::RoomID) -> Self {
+    fn new(id: matrix::model::RoomID) -> Self {
         Room {
             id: id,
             canonical_alias: None,
@@ -176,7 +176,7 @@ impl Room {
 
 
 impl Bridge {
-    pub fn room_from_matrix(&mut self, id: &matrix::events::RoomID) -> &mut Room {
+    pub fn room_from_matrix(&mut self, id: &matrix::model::RoomID) -> &mut Room {
         if !self.rooms.contains_key(id) {
             self.rooms.insert(id.clone(), Room::new(id.clone()));
         }
@@ -187,7 +187,7 @@ impl Bridge {
     }
 
     pub fn room_from_irc(&mut self, id: &String) -> Option<&mut Room> {
-        let mut room_id: Option<matrix::events::RoomID> = None;
+        let mut room_id: Option<matrix::model::RoomID> = None;
         for (_, r) in self.rooms.iter_mut() {
             if let Some(ref alias) = r.canonical_alias {
                 if alias == id {

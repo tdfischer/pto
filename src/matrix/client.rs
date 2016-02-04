@@ -23,6 +23,7 @@ use std::fmt;
 use std::result;
 use matrix::json as mjson;
 use matrix::events;
+use matrix::model;
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -87,7 +88,7 @@ pub struct Client {
     token: Option<AccessToken>,
     next_id: u32,
     baseurl: String,
-    pub uid: Option<events::UserID>
+    pub uid: Option<model::UserID>
 }
 
 impl fmt::Debug for Client {
@@ -128,7 +129,7 @@ impl Client {
                 });
                 let url = hyper::Url::parse(self.baseurl.trim()).unwrap();
                 let domain = url.host().unwrap().serialize();
-                self.uid = Some(events::UserID::from_str(format!("@{}:{}", username, domain).trim()));
+                self.uid = Some(model::UserID::from_str(format!("@{}:{}", username, domain).trim()));
                 Ok(())
             })
     }
@@ -164,7 +165,7 @@ impl Client {
         }
     }
 
-    pub fn send(&mut self, evt: events::EventData) -> Result<events::EventID> {
+    pub fn send(&mut self, evt: events::EventData) -> Result<model::EventID> {
         self.next_id += 1;
         match evt {
             events::EventData::Room(ref id, _) => {
@@ -184,7 +185,7 @@ impl Client {
             _ => panic!("Don't know where to send {}", evt.to_json())
         }.and_then(|response| {
             trace!(">>> {} {:?}", evt.to_json(), response);
-            Ok(events::EventID::from_str(mjson::string(&response, "event_id")))
+            Ok(model::EventID::from_str(mjson::string(&response, "event_id")))
         })
     }
 
