@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-use mio::tcp::{TcpListener,TcpStream};
-use std::net::SocketAddr;
+use mio::tcp::TcpStream;
 use std::io::Write;
 use std::io;
-
-use openssl::ssl::{SslContext, SslStream};
+use openssl::ssl::SslStream;
 
 use irc::util::LineReader;
 use irc::protocol::*;
@@ -95,36 +93,4 @@ impl Client {
 
 pub trait Server {
     fn accept(&mut self) -> Option<Client>;
-}
-
-pub struct SslServer {
-    listener: TcpListener,
-    ssl: SslContext
-}
-
-impl SslServer {
-    pub fn new(addr: &SocketAddr, ssl: SslContext) -> Self {
-        SslServer {
-            listener: TcpListener::bind(addr).unwrap(),
-            ssl: ssl
-        }
-    }
-
-    pub fn listener(&self) -> &TcpListener {
-        &self.listener
-    }
-}
-
-impl Server for SslServer {
-    fn accept(&mut self) -> Option<Client> {
-         match self.listener.accept() {
-             Ok(None) => None,
-             Ok(Some((socket, _))) => {
-                 let ssl = SslStream::accept(&self.ssl, socket).expect("Could not construct SSL stream");
-                 Some(Client::new(ssl))
-             },
-             Err(e) => panic!(e),
-         }
-    }
-
 }

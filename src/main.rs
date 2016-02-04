@@ -23,6 +23,7 @@ extern crate log;
 mod irc;
 mod matrix;
 mod bridge;
+mod ssl;
 use mio::{EventLoop,Handler,Token,EventSet,PollOpt};
 use std::thread;
 use bridge::Bridge;
@@ -30,9 +31,10 @@ use std::env;
 use std::path::Path;
 use openssl::ssl::{SslContext, SslMethod};
 use openssl::x509::X509FileType;
+use irc::streams::Server;
 
 struct IrcHandler {
-    server: irc::streams::Server,
+    server: ssl::SslServer,
     url: String
 }
 
@@ -67,7 +69,7 @@ fn main() {
     let mut ssl = SslContext::new(SslMethod::Sslv23).expect("SSL setup failed");
     ssl.set_certificate_file(Path::new("pto.crt"), X509FileType::PEM).expect("Could not load pto.crt");
     ssl.set_private_key_file(Path::new("pto.key"), X509FileType::PEM).expect("Could not load pto.key");
-    let server = irc::streams::Server::new(&addr, ssl);
+    let server = ssl::SslServer::new(&addr, ssl);
     info!("Listening on 127.0.0.1:8001");
     let mut events = EventLoop::new().unwrap();
     events.register(server.listener(), SERVER, EventSet::all(), PollOpt::edge()).unwrap();
