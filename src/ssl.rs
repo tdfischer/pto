@@ -1,5 +1,5 @@
 use irc::streams::{Server, Client};
-use mio::tcp::TcpListener;
+use mio::tcp::{TcpStream, TcpListener};
 use openssl::ssl::{SslContext, SslStream};
 use std::net::SocketAddr;
 
@@ -22,7 +22,9 @@ impl SslServer {
 }
 
 impl Server for SslServer {
-    fn accept(&mut self) -> Option<Client> {
+    type Client = Client<SslStream<TcpStream>>;
+
+    fn accept(&mut self) -> Option<Self::Client> {
          match self.listener.accept() {
              Ok(None) => None,
              Ok(Some((socket, _))) => {

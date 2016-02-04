@@ -14,26 +14,26 @@
  * limitations under the License.
  */
 
-use mio::tcp::TcpStream;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::io;
-use openssl::ssl::SslStream;
 
 use irc::util::LineReader;
 use irc::protocol::*;
 use irc::security::AuthSession;
 
 #[derive(Debug)]
-pub struct Client {
-    stream: SslStream<TcpStream>,
+pub struct Client<IrcStream>
+        where IrcStream: Read + Write {
+    stream: IrcStream,
     line_reader: LineReader,
     nickname: Option<String>,
     username: Option<String>,
     pub auth: AuthSession,
 }
 
-impl Client {
-    pub fn new(stream: SslStream<TcpStream>) -> Self {
+impl<IrcStream> Client<IrcStream>
+        where IrcStream: Read + Write {
+    pub fn new(stream: IrcStream) -> Self {
         Client {
             stream: stream,
             line_reader: LineReader::new(),
@@ -43,7 +43,7 @@ impl Client {
         }
     }
 
-    pub fn stream(&self) -> &SslStream<TcpStream> {
+    pub fn stream(&self) -> &IrcStream {
         &self.stream
     }
 
@@ -92,5 +92,6 @@ impl Client {
 }
 
 pub trait Server {
-    fn accept(&mut self) -> Option<Client>;
+    type Client;
+    fn accept(&mut self) -> Option<Self::Client>;
 }

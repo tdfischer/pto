@@ -22,6 +22,8 @@ use mio::{EventLoop,Handler,Token,EventSet,PollOpt,Sender};
 use std::thread;
 use std::collections::HashMap;
 use std::io;
+use openssl::ssl::SslStream;
+use mio::tcp::TcpStream;
 
 const CLIENT: Token = Token(0);
 
@@ -32,7 +34,7 @@ pub enum Event {
 }
 
 pub struct Bridge {
-    client: irc::streams::Client,
+    client: irc::streams::Client<SslStream<TcpStream>>,
     matrix: matrix::client::Client,
     rooms: HashMap<matrix::model::RoomID, Room>,
     seen_events: Vec<matrix::model::EventID>,
@@ -201,7 +203,7 @@ impl Bridge {
         }
     }
 
-    pub fn new(client: irc::streams::Client, url: &str) -> Self {
+    pub fn new(client: irc::streams::Client<SslStream<TcpStream>>, url: &str) -> Self {
         Bridge {
             client: client,
             matrix: matrix::client::Client::new(url),
