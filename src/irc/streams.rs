@@ -93,20 +93,30 @@ impl Client {
     }
 }
 
-pub struct Server {
+pub trait Server {
+    fn accept(&mut self) -> Option<Client>;
+}
+
+pub struct SslServer {
     listener: TcpListener,
     ssl: SslContext
 }
 
-impl Server {
+impl SslServer {
     pub fn new(addr: &SocketAddr, ssl: SslContext) -> Self {
-        Server {
+        SslServer {
             listener: TcpListener::bind(addr).unwrap(),
             ssl: ssl
         }
     }
 
-    pub fn accept(&mut self) -> Option<Client> {
+    pub fn listener(&self) -> &TcpListener {
+        &self.listener
+    }
+}
+
+impl Server for SslServer {
+    fn accept(&mut self) -> Option<Client> {
          match self.listener.accept() {
              Ok(None) => None,
              Ok(Some((socket, _))) => {
@@ -117,8 +127,4 @@ impl Server {
          }
     }
 
-    pub fn listener(&self) -> &TcpListener {
-        &self.listener
-    }
 }
-
