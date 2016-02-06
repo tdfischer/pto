@@ -16,24 +16,51 @@
 
 use std::io::{Read, Write};
 use std::io;
+use mio::Evented;
+use openssl::ssl::SslStream;
+use mio::tcp::TcpStream;
 
 use irc::util::LineReader;
 use irc::protocol::*;
 use irc::security::AuthSession;
 
-#[derive(Debug)]
-pub struct Client<IrcStream>
-        where IrcStream: Read + Write {
-    stream: IrcStream,
+pub trait AsEvented {
+    fn as_evented(&self) -> &Evented;
+}
+
+pub trait IrcStream: Read + Write + AsEvented + Send {}
+
+impl IrcStream for SslStream<TcpStream> {}
+impl IrcStream for TcpStream {}
+
+impl AsEvented for TcpStream {
+    fn as_evented(&self) -> &Evented {
+        self
+    }
+}
+
+impl AsEvented for SslStream<TcpStream> {
+    fn as_evented(&self) -> &Evented {
+        self.get_ref()
+    }
+}
+
+impl AsEvented for Client {
+    fn as_evented(&self) -> &Evented {
+        self.stream.as_evented()
+    }
+}
+
+pub struct Client {
+    stream: Box<IrcStream>,
     line_reader: LineReader,
     nickname: Option<String>,
     username: Option<String>,
     pub auth: AuthSession,
 }
 
-impl<IrcStream> Client<IrcStream>
-        where IrcStream: Read + Write {
-    pub fn new(stream: IrcStream) -> Self {
+impl Client {
+    pub fn new(stream: Box<IrcStream>) -> Self {
         Client {
             stream: stream,
             line_reader: LineReader::new(),
@@ -41,10 +68,6 @@ impl<IrcStream> Client<IrcStream>
             username: None,
             auth: AuthSession::new(),
         }
-    }
-
-    pub fn stream(&self) -> &IrcStream {
-        &self.stream
     }
 
     pub fn read_message(&mut self) -> Option<Message> {
@@ -91,7 +114,6 @@ impl<IrcStream> Client<IrcStream>
     }
 }
 
-pub trait Server {
-    type Client;
-    fn accept(&mut self) -> Option<Self::Client>;
+pub trait Server: AsEvented {
+    fn accept(&mut self) -> Option<Client>;
 }

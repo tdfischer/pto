@@ -1,7 +1,20 @@
-use irc::streams::{Server, Client};
-use mio::tcp::{TcpStream, TcpListener};
+use irc::streams::{Server, Client, AsEvented};
+use mio::tcp::TcpListener;
+use mio::Evented;
 use openssl::ssl::{SslContext, SslStream};
 use std::net::SocketAddr;
+
+pub struct TcpServer {
+    listener: TcpListener
+}
+
+impl TcpServer {
+    pub fn new(addr: &SocketAddr) -> Self {
+        TcpServer {
+            listener: TcpListener::bind(addr).unwrap()
+        }
+    }
+}
 
 pub struct SslServer {
     listener: TcpListener,
@@ -15,21 +28,39 @@ impl SslServer {
             ssl: ssl
         }
     }
+}
 
-    pub fn listener(&self) -> &TcpListener {
+impl AsEvented for SslServer {
+    fn as_evented(&self) -> &Evented {
+        &self.listener
+    }
+}
+
+impl AsEvented for TcpServer {
+    fn as_evented(&self) -> &Evented {
         &self.listener
     }
 }
 
 impl Server for SslServer {
-    type Client = Client<SslStream<TcpStream>>;
-
-    fn accept(&mut self) -> Option<Self::Client> {
+    fn accept(&mut self) -> Option<Client> {
          match self.listener.accept() {
              Ok(None) => None,
              Ok(Some((socket, _))) => {
                  let ssl = SslStream::accept(&self.ssl, socket).expect("Could not construct SSL stream");
-                 Some(Client::new(ssl))
+                 Some(Client::new(Box::new(ssl)))
+             },
+             Err(e) => panic!(e),
+         }
+    }
+}
+
+impl Server for TcpServer {
+    fn accept(&mut self) -> Option<Client> {
+         match self.listener.accept() {
+             Ok(None) => None,
+             Ok(Some((socket, _))) => {
+                 Some(Client::new(Box::new(socket)))
              },
              Err(e) => panic!(e),
          }

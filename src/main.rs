@@ -31,10 +31,10 @@ use std::env;
 use std::path::Path;
 use openssl::ssl::{SslContext, SslMethod};
 use openssl::x509::X509FileType;
-use irc::streams::Server;
+use irc::streams::{Server, AsEvented};
 
 struct IrcHandler {
-    server: ssl::SslServer,
+    server: Box<Server>,
     url: String
 }
 
@@ -66,13 +66,18 @@ fn main() {
     env_logger::init().unwrap();
     let addr = "127.0.0.1:8001".parse().unwrap();
     let url =  env::args().nth(1).unwrap();
-    let mut ssl = SslContext::new(SslMethod::Sslv23).expect("SSL setup failed");
-    ssl.set_certificate_file(Path::new("pto.crt"), X509FileType::PEM).expect("Could not load pto.crt");
-    ssl.set_private_key_file(Path::new("pto.key"), X509FileType::PEM).expect("Could not load pto.key");
-    let server = ssl::SslServer::new(&addr, ssl);
+    let use_ssl = false;
+    let server: Box<Server> = if use_ssl {
+        let mut ssl = SslContext::new(SslMethod::Sslv23).expect("SSL setup failed");
+        ssl.set_certificate_file(Path::new("pto.crt"), X509FileType::PEM).expect("Could not load pto.crt");
+        ssl.set_private_key_file(Path::new("pto.key"), X509FileType::PEM).expect("Could not load pto.key");
+        Box::new(ssl::SslServer::new(&addr, ssl))
+    } else {
+        Box::new(ssl::TcpServer::new(&addr))
+    };
     info!("Listening on 127.0.0.1:8001");
     let mut events = EventLoop::new().unwrap();
-    events.register(server.listener(), SERVER, EventSet::all(), PollOpt::edge()).unwrap();
+    events.register(server.as_evented(), SERVER, EventSet::all(), PollOpt::edge()).unwrap();
     events.run(&mut IrcHandler{
         server: server,
         url: url
