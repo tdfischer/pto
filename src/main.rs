@@ -73,6 +73,7 @@ fn main() {
         ssl.set_private_key_file(Path::new("pto.key"), X509FileType::PEM).expect("Could not load pto.key");
         Box::new(ssl::SslServer::new(&addr, ssl))
     } else {
+        warn!("SSL IS DISABLED!! IRC LOGINS ARE IN THE CLEAR AND UNENCRYPTED");
         Box::new(ssl::TcpServer::new(&addr))
     };
     info!("Listening on 127.0.0.1:8001");
