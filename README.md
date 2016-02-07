@@ -66,11 +66,30 @@ The following are hardcoded defaults:
 - If SSL is used, it requires files named ./pto.crt and ./pto.key for a SSL
   certificate and key, respectively
 
+PTO accepts two command line arguments:
+
+  ``$ pto <hostname-or-url> [<listen-address:port>]``
+
+``hostname-or-url`` can be a url such as ``https://matrix.org/\_matrix/``, or it can
+just be a domain name such as ``matrix.org``. In the case of only using a domain
+name, PTO will look up the \_matrix.\_tcp SRV record and use that if one exists.
+
 ## Usage
 
 By default, PTO will listen on localhost:8001 for an IRC client to connect with
 an appropriate username and password. The username and password supplied through
 the IRC connection will be used to login to matrix.
+
+With most clients, this is called your "ident" and "server password". SASL
+authentication is currently unimplemented though patches are welcome and
+appreciated.
+
+PTO will only support logins to the server specified on the command line,
+meaning your username is your matrix username. For example, if your login is
+@alice:matrix.org, use 'alice' to login to PTO.
+
+Guest support is currently unimplemented though both protocols support the idea
+very well.
 
 # TODO
 
