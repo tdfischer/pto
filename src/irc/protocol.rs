@@ -16,7 +16,7 @@
 
 use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq,Eq)]
 pub enum Command {
     Nick,
     User,
@@ -175,4 +175,50 @@ pub struct Message {
     pub command: Command,
     pub args: Vec<String>,
     pub suffix: Option<String>
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn classic_irc_session() {
+        let msg = Message::from_str("USER nick 0 * hostname");
+        assert_eq!(msg.prefix, None);
+        assert_eq!(msg.command, Command::User);
+        assert_eq!(msg.args, &["nick", "0", "*", "hostname"]);
+        assert_eq!(msg.suffix, None);
+
+        let msg = Message::from_str("NICK nick");
+        assert_eq!(msg.prefix, None);
+        assert_eq!(msg.command, Command::Nick);
+        assert_eq!(msg.args, &["nick"]);
+        assert_eq!(msg.suffix, None);
+
+        let msg = Message::from_str(":nick!nick@hostname JOIN #foo");
+        assert_eq!(msg.prefix, Some("nick!nick@hostname".to_owned()));
+        assert_eq!(msg.command, Command::Join);
+        assert_eq!(msg.args, &["#foo"]);
+        assert_eq!(msg.suffix, None);
+
+        let msg = Message::from_str(":nick!nick@hostname PRIVMSG #foo :Hello World!");
+        assert_eq!(msg.prefix, Some("nick!nick@hostname".to_owned()));
+        assert_eq!(msg.command, Command::Privmsg);
+        assert_eq!(msg.args, &["#foo"]);
+        assert_eq!(msg.suffix, Some("Hello World!".to_owned()));
+    }
+
+    #[test]
+    fn weird_cases() {
+        let msg = Message::from_str("USER nick:name 0 * hostname");
+        assert_eq!(msg.prefix, None);
+        assert_eq!(msg.command, Command::User);
+        assert_eq!(msg.args, &["nick:name", "0", "*", "hostname"]);
+        assert_eq!(msg.suffix, None);
+
+        let msg = Message::from_str("USER  nick  0  *  hostname");
+        assert_eq!(msg.prefix, None);
+        assert_eq!(msg.command, Command::User);
+        assert_eq!(msg.args, &["", "nick", "", "0", "", "*", "", "hostname"]);
+        assert_eq!(msg.suffix, None);
+    }
 }
