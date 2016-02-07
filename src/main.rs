@@ -29,6 +29,7 @@ use std::thread;
 use bridge::Bridge;
 use std::env;
 use std::path::Path;
+use std::net::SocketAddr;
 use openssl::ssl::{SslContext, SslMethod};
 use openssl::x509::X509FileType;
 use irc::streams::{Server, AsEvented};
@@ -64,9 +65,16 @@ const SERVER: Token = Token(0);
 
 fn main() {
     env_logger::init().unwrap();
-    let addr = "127.0.0.1:8001".parse().unwrap();
+    let addr: SocketAddr = match env::args().nth(2) {
+        Some(arg) => arg,
+        None => "127.0.0.1:8001".to_string()
+    }.parse().unwrap();
     let url =  env::args().nth(1).unwrap();
-    let use_ssl = false;
+    let use_ssl = match addr {
+        SocketAddr::V4(ref a) =>
+            a.ip().octets() != [127, 0, 0, 1],
+        _ => true
+    };
     let server: Box<Server> = if use_ssl {
         let mut ssl = SslContext::new(SslMethod::Sslv23).expect("SSL setup failed");
         ssl.set_certificate_file(Path::new("pto.crt"), X509FileType::PEM).expect("Could not load pto.crt");
@@ -76,7 +84,7 @@ fn main() {
         warn!("SSL IS DISABLED!! IRC LOGINS ARE IN THE CLEAR AND UNENCRYPTED");
         Box::new(ssl::TcpServer::new(&addr))
     };
-    info!("Listening on 127.0.0.1:8001");
+    info!("Listening on {}", addr);
     let mut events = EventLoop::new().unwrap();
     events.register(server.as_evented(), SERVER, EventSet::all(), PollOpt::edge()).unwrap();
     events.run(&mut IrcHandler{

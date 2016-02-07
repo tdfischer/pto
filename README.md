@@ -45,6 +45,10 @@ Specify a different URL to use a different matrix server.
 
 Or the appropriate binary named ./target/\*/pto
 
+To use a different address+port, use:
+
+  ``$ cargo run https://matrix.org/_matrix/client/api/v1/ 0.0.0.0:4242
+
 ## Configuration
 
 Currently configuration is limited to modifying hardcoded strings in various
@@ -53,9 +57,10 @@ places. Thank you for getting this far though! I would absolutely love a patch
 
 The following are hardcoded defaults:
 
-- Listens on 127.0.0.1:8001
-- Requires SSL
-- Requires files named ./pto.crt and ./pto.key for a SSL certificate and key, respectively
+- Listens on 127.0.0.1:8001 by default unless told otherwise
+- Requires SSL for non-loopback addresses
+- If SSL is used, it requires files named ./pto.crt and ./pto.key for a SSL
+  certificate and key, respectively
 
 ## Usage
 
