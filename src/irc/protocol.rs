@@ -92,18 +92,17 @@ impl Message {
             }
         }
 
-        let mut args_end = prefix_end;
+        let mut args_end = line.len();
         let mut found_space = false;
-        for c in line[prefix_end..].chars() {
+        for (i, c) in line[prefix_end..].char_indices() {
             if c == ' ' {
                 found_space = true;
             } else if c == ':' && found_space {
-                args_end -= 1;
+                args_end = prefix_end + i - 1;
                 break
             } else {
                 found_space = false;
             }
-            args_end += 1;
         }
 
         let prefix = match prefix_end {
