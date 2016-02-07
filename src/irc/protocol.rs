@@ -83,8 +83,7 @@ impl Message {
 
     fn split_parts(line: &str) -> (Option<String>, &str, Option<String>) {
         let mut prefix_end = 0;
-        let mut args_end = 0;
-        if line.chars().nth(0).unwrap() == ':' {
+        if line.starts_with(":") {
             for c in line[1..].chars() {
                 prefix_end += 1;
                 if c == ' ' {
@@ -93,6 +92,7 @@ impl Message {
             }
         }
 
+        let mut args_end = prefix_end;
         let mut found_space = false;
         for c in line[prefix_end..].chars() {
             if c == ' ' {
