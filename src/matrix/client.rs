@@ -206,6 +206,10 @@ impl Client {
                     ret.push(events::Event::from_json(evt));
                 };
             }
+            ret.push(events::Event {
+                data: events::EventData::EndOfSync,
+                id: None
+            });
             Ok(ret)
         })
     }

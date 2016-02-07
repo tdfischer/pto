@@ -69,10 +69,13 @@ unsafe impl Sync for Bridge{}
 
 struct Room {
     id: matrix::model::RoomID,
+    irc_name: Option<String>,
     canonical_alias: Option<String>,
     join_rules: Option<String>,
     members: Vec<matrix::model::UserID>,
-    pending_events: Vec<matrix::events::RoomEvent>
+    aliases: Vec<String>,
+    pending_events: Vec<matrix::events::RoomEvent>,
+    pending_sync: bool
 }
 
 impl Room {
@@ -82,26 +85,53 @@ impl Room {
             canonical_alias: None,
             join_rules: None,
             members: vec![],
-            pending_events: vec![]
+            pending_events: vec![],
+            aliases: vec![],
+            pending_sync: true,
+            irc_name: None
         }
     }
 
     fn run_pending<F>(&mut self, mut callback: &mut F)
             where F: FnMut(irc::protocol::Message) {
+        assert!(self.pending_sync);
         while let Some(evt) = self.pending_events.pop() {
             self.handle_with_alias(evt, callback);
         }
     }
 
+    pub fn finish_sync<F>(&mut self, mut callback: &mut F)
+            where F: FnMut(irc::protocol::Message) {
+        for a in &self.aliases {
+            if a.ends_with(":oob.systems") {
+                self.irc_name = Some(a.clone());
+                break;
+            }
+        }
+        if self.irc_name == None {
+            self.irc_name = match self.canonical_alias {
+                None => {
+                    if self.aliases.len() == 0 {
+                        Some(format!("#{}:{}", self.id.id, self.id.homeserver))
+                    } else {
+                        Some(self.aliases[0].clone())
+                    }
+                },
+                Some(ref a) => Some(a.clone())
+            }
+        }
+        self.run_pending(callback);
+    }
+
     fn handle_with_alias<F>(&mut self, evt: matrix::events::RoomEvent, mut callback: &mut F)
             where F: FnMut(irc::protocol::Message) {
-        if self.canonical_alias != None {
+        if self.irc_name != None {
             match evt {
                 matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Join) => {
                     callback(irc::protocol::Message {
                         prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
                         command: irc::protocol::Command::Join,
-                        args: vec![self.canonical_alias.clone().unwrap()],
+                        args: vec![self.irc_name.clone().unwrap()],
                         suffix: None
                     });
                     self.members.push(user);
@@ -110,7 +140,7 @@ impl Room {
                     callback(irc::protocol::Message {
                         prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
                         command: irc::protocol::Command::Part,
-                        args: vec![self.canonical_alias.clone().unwrap()],
+                        args: vec![self.irc_name.clone().unwrap()],
                         suffix: None
                     });
                     self.members.push(user);
@@ -120,7 +150,7 @@ impl Room {
                     callback(irc::protocol::Message {
                         prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
                         command: irc::protocol::Command::Privmsg,
-                        args: vec![self.canonical_alias.clone().unwrap()],
+                        args: vec![self.irc_name.clone().unwrap()],
                         suffix: Some(text)
                     });
                 },
@@ -128,11 +158,10 @@ impl Room {
                     callback(irc::protocol::Message {
                         prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
                         command: irc::protocol::Command::Topic,
-                        args: vec![self.canonical_alias.clone().unwrap()],
+                        args: vec![self.irc_name.clone().unwrap()],
                         suffix: Some(topic.clone())
                     });
                 },
-                matrix::events::RoomEvent::CanonicalAlias(_) => unreachable!("canonical_alias should have been handled already!"),
                 _ => {
                     warn!("Unhandled event {:?}", evt)
                 }
@@ -146,22 +175,13 @@ impl Room {
             where F: FnMut(irc::protocol::Message) {
         match evt {
             matrix::events::RoomEvent::CanonicalAlias(name) => {
-                let was_empty = self.canonical_alias == None;
                 self.canonical_alias = Some(name.clone());
-                if was_empty {
-                    self.run_pending(&mut callback);
-                }
             },
             matrix::events::RoomEvent::JoinRules(rules) =>
                 self.join_rules = Some(rules.clone()),
             matrix::events::RoomEvent::Create => (),
-            matrix::events::RoomEvent::Aliases(aliases) => {
-                let is_empty = self.canonical_alias == None;
-                if is_empty {
-                    self.canonical_alias = Some(aliases[0].clone());
-                    self.run_pending(&mut callback);
-                }
-            },
+            matrix::events::RoomEvent::Aliases(aliases) =>
+                self.aliases = aliases,
             matrix::events::RoomEvent::PowerLevels => (),
             matrix::events::RoomEvent::HistoryVisibility(_) => (),
             matrix::events::RoomEvent::Name(_, _) => (),
@@ -190,7 +210,7 @@ impl Bridge {
     pub fn room_from_irc(&mut self, id: &String) -> Option<&mut Room> {
         let mut room_id: Option<matrix::model::RoomID> = None;
         for (_, r) in self.rooms.iter_mut() {
-            if let Some(ref alias) = r.canonical_alias {
+            if let Some(ref alias) = r.irc_name {
                 if alias == id {
                     room_id = Some(r.id.clone())
                 }
@@ -217,6 +237,13 @@ impl Bridge {
         events.run(self).unwrap();
     }
 
+    fn finish_sync<F>(&mut self, mut callback: &mut F)
+            where F: FnMut(irc::protocol::Message) {
+        for (_, mut room) in &mut self.rooms {
+            room.finish_sync(callback);
+        }
+    }
+
     fn handle_matrix(&mut self, evt: matrix::events::Event) -> io::Result<usize> {
         let duplicate = match evt.id {
             Some(ref id) =>
@@ -226,7 +253,7 @@ impl Bridge {
         if !duplicate {
             let mut messages: Vec<irc::protocol::Message> = vec![];
             {
-                let append_msg = |msg: irc::protocol::Message| {
+                let mut append_msg = |msg: irc::protocol::Message| {
                     messages.push(msg);
                 };
                 match evt.data {
@@ -234,6 +261,7 @@ impl Bridge {
                         self.room_from_matrix(&room_id).handle_event(room_event, append_msg);
                     },
                     matrix::events::EventData::Typing(_) => (),
+                    matrix::events::EventData::EndOfSync => self.finish_sync(&mut append_msg),
                     _ => warn!("Unhandled {}", evt.data.type_str())
                 }
             }

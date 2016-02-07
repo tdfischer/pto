@@ -66,7 +66,8 @@ pub enum EventData {
     Room(model::RoomID, RoomEvent),
     Typing(TypingEvent),
     Presence(PresenceEvent),
-    Unknown(String, Json)
+    Unknown(String, Json),
+    EndOfSync
 }
 
 impl EventData {
@@ -100,7 +101,8 @@ impl EventData {
                 "m.typing".to_string(),
             &EventData::Presence(_) =>
                 "m.presence".to_string(),
-            &EventData::Unknown(ref unknown_type, _) => unknown_type.clone()
+            &EventData::Unknown(ref unknown_type, _) => unknown_type.clone(),
+            &EventData::EndOfSync => panic!("EndOfSync is a special value")
         }
     }
 
