@@ -16,7 +16,7 @@
 
 use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq,Eq)]
 pub enum Command {
     Nick,
     User,
@@ -83,8 +83,7 @@ impl Message {
 
     fn split_parts(line: &str) -> (Option<String>, &str, Option<String>) {
         let mut prefix_end = 0;
-        let mut args_end = 0;
-        if line.chars().nth(0).unwrap() == ':' {
+        if line.starts_with(":") {
             for c in line[1..].chars() {
                 prefix_end += 1;
                 if c == ' ' {
@@ -93,17 +92,17 @@ impl Message {
             }
         }
 
+        let mut args_end = line.len();
         let mut found_space = false;
-        for c in line[prefix_end..].chars() {
+        for (i, c) in line[prefix_end..].char_indices() {
             if c == ' ' {
                 found_space = true;
             } else if c == ':' && found_space {
-                args_end -= 1;
+                args_end = prefix_end + i - 1;
                 break
             } else {
                 found_space = false;
             }
-            args_end += 1;
         }
 
         let prefix = match prefix_end {
@@ -175,4 +174,71 @@ pub struct Message {
     pub command: Command,
     pub args: Vec<String>,
     pub suffix: Option<String>
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn classic_irc_session() {
+        let msg = Message::from_str("USER nick 0 * hostname");
+        assert_eq!(msg.prefix, None);
+        assert_eq!(msg.command, Command::User);
+        assert_eq!(msg.args, &["nick", "0", "*", "hostname"]);
+        assert_eq!(msg.suffix, None);
+
+        let msg = Message::from_str("NICK nick");
+        assert_eq!(msg.prefix, None);
+        assert_eq!(msg.command, Command::Nick);
+        assert_eq!(msg.args, &["nick"]);
+        assert_eq!(msg.suffix, None);
+
+        let msg = Message::from_str(":nick!nick@hostname JOIN #foo");
+        assert_eq!(msg.prefix, Some("nick!nick@hostname".to_owned()));
+        assert_eq!(msg.command, Command::Join);
+        assert_eq!(msg.args, &["#foo"]);
+        assert_eq!(msg.suffix, None);
+
+        let msg = Message::from_str(":nick!nick@hostname PRIVMSG #foo :Hello World!");
+        assert_eq!(msg.prefix, Some("nick!nick@hostname".to_owned()));
+        assert_eq!(msg.command, Command::Privmsg);
+        assert_eq!(msg.args, &["#foo"]);
+        assert_eq!(msg.suffix, Some("Hello World!".to_owned()));
+
+        let msg = Message::from_str(":nick!nick@hostname QUIT :Goodbye!");
+        assert_eq!(msg.prefix, Some("nick!nick@hostname".to_owned()));
+        assert_eq!(msg.command, Command::Quit);
+        assert!(msg.args.len() == 0);
+        assert_eq!(msg.suffix, Some("Goodbye!".to_owned()));
+    }
+
+    #[test]
+    fn weird_cases() {
+        let msg = Message::from_str("USER nick:name 0 * hostname");
+        assert_eq!(msg.prefix, None);
+        assert_eq!(msg.command, Command::User);
+        assert_eq!(msg.args, &["nick:name", "0", "*", "hostname"]);
+        assert_eq!(msg.suffix, None);
+
+        let msg = Message::from_str("USER  nick  0  *  hostname");
+        assert_eq!(msg.prefix, None);
+        assert_eq!(msg.command, Command::User);
+        assert_eq!(msg.args, &["", "nick", "", "0", "", "*", "", "hostname"]);
+        assert_eq!(msg.suffix, None);
+    }
+
+    #[test]
+    fn utf8_messages() {
+        let msg = Message::from_str(":nick!nick@hostname PRIVMSG #foo :Some utf8 fun éèàåöþœðßä");
+        assert_eq!(msg.prefix, Some("nick!nick@hostname".to_owned()));
+        assert_eq!(msg.command, Command::Privmsg);
+        assert_eq!(msg.args, &["#foo"]);
+        assert_eq!(msg.suffix, Some("Some utf8 fun éèàåöþœðßä".to_owned()));
+
+        let msg = Message::from_str(":nick!nick@hostname PRIVMSG #héhé :In a chan with utf8 in its name!");
+        assert_eq!(msg.prefix, Some("nick!nick@hostname".to_owned()));
+        assert_eq!(msg.command, Command::Privmsg);
+        assert_eq!(msg.args, &["#héhé"]);
+        assert_eq!(msg.suffix, Some("In a chan with utf8 in its name!".to_owned()));
+    }
 }
