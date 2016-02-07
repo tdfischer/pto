@@ -236,7 +236,7 @@ impl Room {
 
 
 impl Bridge {
-    pub fn room_from_matrix(&mut self, id: &matrix::model::RoomID) -> &mut Room {
+    fn room_from_matrix(&mut self, id: &matrix::model::RoomID) -> &mut Room {
         if !self.rooms.contains_key(id) {
             self.rooms.insert(id.clone(), Room::new(id.clone()));
         }
@@ -246,7 +246,7 @@ impl Bridge {
         }
     }
 
-    pub fn room_from_irc(&mut self, id: &String) -> Option<&mut Room> {
+    fn room_from_irc(&mut self, id: &String) -> Option<&mut Room> {
         let mut room_id: Option<matrix::model::RoomID> = None;
         for (_, r) in self.rooms.iter_mut() {
             if let Some(ref alias) = r.irc_name {
