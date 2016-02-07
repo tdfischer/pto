@@ -70,12 +70,13 @@ fn main() {
         None => "127.0.0.1:8001".to_string()
     }.parse().unwrap();
     let url =  env::args().nth(1).unwrap();
-    let use_ssl = match addr {
-        SocketAddr::V4(ref a) =>
-            a.ip().octets() != [127, 0, 0, 1],
+    let is_loopback = match addr {
+        SocketAddr::V4(ref a) => {
+            a.ip().octets() == [127, 0, 0, 1]
+        },
         _ => true
     };
-    let server: Box<Server> = if use_ssl {
+    let server: Box<Server> = if !is_loopback {
         let mut ssl = SslContext::new(SslMethod::Sslv23).expect("SSL setup failed");
         ssl.set_certificate_file(Path::new("pto.crt"), X509FileType::PEM).expect("Could not load pto.crt");
         ssl.set_private_key_file(Path::new("pto.key"), X509FileType::PEM).expect("Could not load pto.key");
