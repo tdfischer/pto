@@ -79,6 +79,39 @@ struct Room {
 }
 
 impl Room {
+    fn handle_part<F>(&mut self, user: matrix::model::UserID, mut callback: &mut F)
+            where F: FnMut(irc::protocol::Message) {
+
+        if self.irc_name != None && self.members.contains(&user) {
+            callback(irc::protocol::Message {
+                prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
+                command: irc::protocol::Command::Part,
+                args: vec![self.irc_name.clone().unwrap()],
+                suffix: None
+            });
+        }
+
+        match self.members.iter().position(|u| u == &user) {
+            Some(idx) => {
+                self.members.remove(idx);
+            },
+            None => ()
+        }
+    }
+
+    fn handle_join<F>(&mut self, user: matrix::model::UserID, mut callback: &mut F)
+            where F: FnMut(irc::protocol::Message) {
+        if self.irc_name != None && !self.members.contains(&user) {
+            callback(irc::protocol::Message {
+                prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
+                command: irc::protocol::Command::Join,
+                args: vec![self.irc_name.clone().unwrap()],
+                suffix: None
+            });
+        }
+        self.members.push(user);
+    }
+
     fn new(id: matrix::model::RoomID) -> Self {
         Room {
             id: id,
@@ -100,10 +133,10 @@ impl Room {
         }
     }
 
-    pub fn finish_sync<F>(&mut self, mut callback: &mut F)
+    pub fn finish_sync<F>(&mut self, my_uid: &matrix::model::UserID, mut callback: &mut F)
             where F: FnMut(irc::protocol::Message) {
         for a in &self.aliases {
-            if a.ends_with(":oob.systems") {
+            if a.ends_with(format!(":{}", my_uid.homeserver).trim()) {
                 self.irc_name = Some(a.clone());
                 break;
             }
@@ -120,6 +153,23 @@ impl Room {
                 Some(ref a) => Some(a.clone())
             }
         }
+        callback(irc::protocol::Message {
+            prefix: Some(format!("{}!{}@{}", my_uid.nickname, my_uid.nickname, my_uid.homeserver)),
+            command: irc::protocol::Command::Join,
+            args: vec![self.irc_name.clone().unwrap()],
+            suffix: None
+        });
+        let mut usernames: Vec<String> = vec![];
+        for u in &self.members {
+            usernames.push(format!("{}", u.nickname));
+        }
+        callback(irc::protocol::Message {
+            prefix: Some("pto".to_string()),
+            command: irc::protocol::Command::Numeric(353),
+            args: vec![my_uid.nickname.clone(), "@".to_string(), self.irc_name.clone().unwrap()],
+            suffix: Some(usernames.join(" "))
+        });
+
         self.run_pending(callback);
     }
 
@@ -127,24 +177,6 @@ impl Room {
             where F: FnMut(irc::protocol::Message) {
         if self.irc_name != None {
             match evt {
-                matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Join) => {
-                    callback(irc::protocol::Message {
-                        prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
-                        command: irc::protocol::Command::Join,
-                        args: vec![self.irc_name.clone().unwrap()],
-                        suffix: None
-                    });
-                    self.members.push(user);
-                },
-                matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Leave) => {
-                    callback(irc::protocol::Message {
-                        prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
-                        command: irc::protocol::Command::Part,
-                        args: vec![self.irc_name.clone().unwrap()],
-                        suffix: None
-                    });
-                    self.members.push(user);
-                },
                 matrix::events::RoomEvent::Membership(_, _) => (),
                 matrix::events::RoomEvent::Message(user, text) => {
                     callback(irc::protocol::Message {
@@ -186,6 +218,12 @@ impl Room {
             matrix::events::RoomEvent::HistoryVisibility(_) => (),
             matrix::events::RoomEvent::Name(_, _) => (),
             matrix::events::RoomEvent::Avatar(_, _) => (),
+            matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Join) => {
+                self.handle_join(user, &mut callback);
+            },
+            matrix::events::RoomEvent::Membership(user, matrix::events::MembershipAction::Leave) => {
+                self.handle_part(user, &mut callback);
+            },
             matrix::events::RoomEvent::Unknown(unknown_type, json) => {
                 warn!("Unknown room event {}", unknown_type);
                 trace!("raw event: {:?}", json);
@@ -240,7 +278,7 @@ impl Bridge {
     fn finish_sync<F>(&mut self, mut callback: &mut F)
             where F: FnMut(irc::protocol::Message) {
         for (_, mut room) in &mut self.rooms {
-            room.finish_sync(callback);
+            room.finish_sync(&self.matrix.uid.as_ref().unwrap(), callback);
         }
     }
 
