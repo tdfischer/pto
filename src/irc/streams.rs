@@ -74,7 +74,12 @@ impl Client {
         match self.line_reader.read(&mut self.stream) {
             Some(line) => {
                 trace!("<< {}", line);
-                Some(Message::from_str(line.trim()))
+                let stripped = line.trim();
+                if stripped.len() == 0 {
+                    None
+                } else {
+                    Some(Message::from_str(stripped))
+                }
             },
             None => None
         }
