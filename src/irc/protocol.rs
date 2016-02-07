@@ -205,6 +205,12 @@ mod tests {
         assert_eq!(msg.command, Command::Privmsg);
         assert_eq!(msg.args, &["#foo"]);
         assert_eq!(msg.suffix, Some("Hello World!".to_owned()));
+
+        let msg = Message::from_str(":nick!nick@hostname QUIT :Goodbye!");
+        assert_eq!(msg.prefix, Some("nick!nick@hostname".to_owned()));
+        assert_eq!(msg.command, Command::Quit);
+        assert!(msg.args.len() == 0);
+        assert_eq!(msg.suffix, Some("Goodbye!".to_owned()));
     }
 
     #[test]
@@ -220,5 +226,20 @@ mod tests {
         assert_eq!(msg.command, Command::User);
         assert_eq!(msg.args, &["", "nick", "", "0", "", "*", "", "hostname"]);
         assert_eq!(msg.suffix, None);
+    }
+
+    #[test]
+    fn utf8_messages() {
+        let msg = Message::from_str(":nick!nick@hostname PRIVMSG #foo :Some utf8 fun éèàåöþœðßä");
+        assert_eq!(msg.prefix, Some("nick!nick@hostname".to_owned()));
+        assert_eq!(msg.command, Command::Privmsg);
+        assert_eq!(msg.args, &["#foo"]);
+        assert_eq!(msg.suffix, Some("Some utf8 fun éèàåöþœðßä".to_owned()));
+
+        let msg = Message::from_str(":nick!nick@hostname PRIVMSG #héhé :In a chan with utf8 in its name!");
+        assert_eq!(msg.prefix, Some("nick!nick@hostname".to_owned()));
+        assert_eq!(msg.command, Command::Privmsg);
+        assert_eq!(msg.args, &["#héhé"]);
+        assert_eq!(msg.suffix, Some("In a chan with utf8 in its name!".to_owned()));
     }
 }
