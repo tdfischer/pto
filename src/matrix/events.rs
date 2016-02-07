@@ -138,7 +138,7 @@ pub struct PresenceEvent {
 
 impl Event {
     pub fn from_json(json: &Json) -> Self {
-        let tokens: Vec<&str> = mjson::string(json, "type").trim().split(".").collect();
+        let tokens: Vec<&str> = mjson::string(json, "type").split(".").collect();
         let id = match json.as_object().unwrap().get("event_id") {
             Some(i) => Some(model::EventID::from_str(i.as_string().unwrap())),
             None => None

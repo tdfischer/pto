@@ -137,7 +137,7 @@ impl Room {
     pub fn finish_sync<F>(&mut self, my_uid: &matrix::model::UserID, mut callback: &mut F)
             where F: FnMut(irc::protocol::Message) {
         for a in &self.aliases {
-            if a.ends_with(format!(":{}", my_uid.homeserver).trim()) {
+            if a.ends_with(&*format!(":{}", my_uid.homeserver)) {
                 self.irc_name = Some(a.clone());
                 break;
             }
@@ -375,12 +375,12 @@ impl Bridge {
                             let auth = self.client.auth.consume();
                             match (auth.username, auth.password) {
                                 (Some(username), Some(password)) => {
-                                    self.matrix.login(username.trim(), password.trim())
+                                    self.matrix.login(&*username, &*password)
                                         .and_then(|_| {
                                             self.start_matrix(events.channel())
                                         })
                                         .and_then(|_| {
-                                            self.client.welcome(username.trim()).unwrap();
+                                            self.client.welcome("Welcome to Perpetually Talking Online!").unwrap();
                                             debug!("Logged in a user");
                                             Ok(())
                                         }).expect("Could not login!");

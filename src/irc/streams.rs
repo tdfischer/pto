@@ -55,7 +55,6 @@ pub struct Client {
     stream: Box<IrcStream>,
     line_reader: LineReader,
     nickname: Option<String>,
-    username: Option<String>,
     pub auth: AuthSession,
 }
 
@@ -65,7 +64,6 @@ impl Client {
             stream: stream,
             line_reader: LineReader::new(),
             nickname: None,
-            username: None,
             auth: AuthSession::new(),
         }
     }
@@ -74,7 +72,7 @@ impl Client {
         match self.line_reader.read(&mut self.stream) {
             Some(line) => {
                 trace!("<< {}", line);
-                let stripped = line.trim();
+                let stripped = &line;
                 if stripped.len() == 0 {
                     None
                 } else {
@@ -109,7 +107,7 @@ impl Client {
             prefix: Some("pto".to_string()),
             command: Command::Numeric(1),
             args: vec![nickname.clone()],
-            suffix: Some(format!("Welcome to Perpetually Talking Online {}", nickname).to_string())
+            suffix: Some(format!("{} {}", message, nickname).to_string())
         }).and(self.send(&Message {
             prefix: Some("pto".to_string()),
             command: Command::Numeric(2),
@@ -125,7 +123,7 @@ impl Client {
 
     pub fn send(&mut self, message: &Message) -> io::Result<usize> {
         trace!(">>> {}", message.to_string());
-        self.stream.write(&message.to_string().trim().as_bytes())
+        self.stream.write(&message.to_string().as_bytes())
             .and(self.stream.write("\r\n".as_bytes()))
     }
 }

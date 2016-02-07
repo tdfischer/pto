@@ -64,7 +64,7 @@ impl Message {
             },
             None => ()
         };
-        ret.push_str(self.command.as_string().trim());
+        ret.push_str(&self.command.as_string());
         for ref arg in self.args.iter() {
             ret.push(' ');
             ret.push_str(arg.trim());

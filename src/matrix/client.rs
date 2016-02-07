@@ -48,7 +48,7 @@ mod http {
             match res.status  {
                 hyper::status::StatusCode::Ok =>  {
                     res.read_to_string(&mut response).expect("Could not read response");
-                    Json::from_str(response.trim()).map_err(|err|{
+                    Json::from_str(&response).map_err(|err|{
                         ClientError::Json(err)
                     })
                 },
@@ -120,7 +120,7 @@ impl Client {
         d.insert("type".to_string(), Json::String("m.login.password".to_string()));
         debug!("Logging in to matrix");
         http::json(self.http.post(self.url("login", &HashMap::new()))
-            .body(Json::Object(d).to_string().trim()))
+            .body(&Json::Object(d).to_string()))
             .and_then(|js| {
                 let obj = js.as_object().unwrap();
                 self.token = Some(AccessToken {
@@ -128,7 +128,7 @@ impl Client {
                     refresh: obj.get("refresh_token").unwrap().as_string().unwrap().to_string()
                 });
                 let domain = self.baseurl.host().unwrap().serialize();
-                self.uid = Some(model::UserID::from_str(format!("@{}:{}", username, domain).trim()));
+                self.uid = Some(model::UserID::from_str(&format!("@{}:{}", username, domain)));
                 Ok(())
             })
     }
@@ -163,10 +163,10 @@ impl Client {
         self.next_id += 1;
         match evt {
             events::EventData::Room(ref id, _) => {
-                let url = self.url(format!("rooms/{}/send/{}/{}",
+                let url = self.url(&format!("rooms/{}/send/{}/{}",
                                            id,
                                            evt.type_str(),
-                                           self.next_id).trim(),
+                                           self.next_id),
                                    &HashMap::new());
                 trace!("Sending events to {:?}", url);
                 // FIXME: This seems needed since hyper will pool HTTP client
@@ -174,7 +174,7 @@ impl Client {
                 // the pooled connection and everything will catch on fire here.
                 let mut http = hyper::client::Client::new();
                 http.set_redirect_policy(hyper::client::RedirectPolicy::FollowAll);
-                http::json(http.put(url).body(format!("{}", evt.to_json()).trim()))
+                http::json(http.put(url).body(&format!("{}", evt.to_json())))
             },
             _ => panic!("Don't know where to send {}", evt.to_json())
         }.and_then(|response| {
