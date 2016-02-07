@@ -22,7 +22,7 @@ impl RoomID {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct UserID {
     pub nickname: String,
     pub homeserver: String 
