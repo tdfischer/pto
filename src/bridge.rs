@@ -23,6 +23,7 @@ use mio::{EventLoop,Handler,Token,EventSet,PollOpt,Sender};
 use std::thread;
 use std::collections::HashMap;
 use std::io;
+use hyper;
 
 const CLIENT: Token = Token(0);
 
@@ -260,7 +261,7 @@ impl Bridge {
         }
     }
 
-    pub fn new(client: irc::streams::Client, url: &str) -> Self {
+    pub fn new(client: irc::streams::Client, url: hyper::Url) -> Self {
         Bridge {
             client: client,
             matrix: matrix::client::Client::new(url),

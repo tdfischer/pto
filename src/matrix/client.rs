@@ -87,7 +87,7 @@ pub struct Client {
     http: hyper::Client,
     token: Option<AccessToken>,
     next_id: u32,
-    baseurl: String,
+    baseurl: hyper::Url,
     pub uid: Option<model::UserID>
 }
 
@@ -98,17 +98,17 @@ impl fmt::Debug for Client {
 }
 
 impl Client {
-    pub fn new(baseurl: &str) -> Self {
-        if !baseurl.starts_with("https") {
+    pub fn new(baseurl: hyper::Url) -> Self {
+        if !baseurl.scheme.starts_with("https") {
             warn!("YOU ARE CONNECTING TO A MATRIX SERVER WITHOUT SSL");
         }
-        let mut http  = hyper::Client::new();
+        let mut http = hyper::Client::new();
         http.set_redirect_policy(hyper::client::RedirectPolicy::FollowAll);
         Client {
             http: http,
             token: None,
             next_id: 0,
-            baseurl: baseurl.to_string(),
+            baseurl: baseurl,
             uid: None
         }
     }
@@ -127,8 +127,7 @@ impl Client {
                     access: obj.get("access_token").unwrap().as_string().unwrap().to_string(),
                     refresh: obj.get("refresh_token").unwrap().as_string().unwrap().to_string()
                 });
-                let url = hyper::Url::parse(self.baseurl.trim()).unwrap();
-                let domain = url.host().unwrap().serialize();
+                let domain = self.baseurl.host().unwrap().serialize();
                 self.uid = Some(model::UserID::from_str(format!("@{}:{}", username, domain).trim()));
                 Ok(())
             })
@@ -136,23 +135,18 @@ impl Client {
 
     fn url(&self, endpoint: &str, args: &HashMap<&str, &str>) -> hyper::Url {
         let mut ret = self.baseurl.clone();
-        ret.push_str(endpoint);
-        ret.push_str("?");
-        match self.token {
-            None => (),
+        ret.path_mut().unwrap().append(&mut vec!["client".to_string(), "api".to_string(), "v1".to_string()]);
+        ret.path_mut().unwrap().push(endpoint.to_string());
+        let args_with_auth = match self.token {
+            None => args.clone(),
             Some(ref token) => {
-                ret.push_str("access_token=");
-                ret.push_str(token.access.trim());
-                ret.push_str("&");
+                let mut a = args.clone();
+                a.insert("access_token", &*token.access);
+                a
             }
-        }
-        for (name, value) in args {
-            ret.push_str(name);
-            ret.push_str("=");
-            ret.push_str(value);
-            ret.push_str("&");
-        }
-        hyper::Url::parse(ret.trim()).unwrap()
+        };
+        ret.set_query_from_pairs(args_with_auth);
+        ret
     }
 
     pub fn poll_async(&mut self) -> AsyncPoll {

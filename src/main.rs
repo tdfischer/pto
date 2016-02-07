@@ -39,7 +39,7 @@ use irc::streams::{Server, AsEvented};
 
 struct IrcHandler {
     server: Box<Server>,
-    url: String
+    url: hyper::Url
 }
 
 impl Handler for IrcHandler {
@@ -51,7 +51,7 @@ impl Handler for IrcHandler {
             SERVER => {
                 match self.server.accept() {
                     Some(client) => {
-                        let mut bridge = Bridge::new(client, self.url.trim());
+                        let mut bridge = Bridge::new(client, self.url.clone());
                         thread::spawn(move||{
                             bridge.run()
                         });
@@ -72,7 +72,13 @@ fn main() {
         Some(arg) => arg,
         None => "127.0.0.1:8001".to_string()
     }.parse().unwrap();
-    let url =  env::args().nth(1).unwrap();
+
+    let domain =  env::args().nth(1).unwrap();
+    let url = match dns::probe_url(&*domain) {
+        Some(u) => u,
+        None => hyper::Url::parse(&*domain).unwrap()
+    };
+
     let is_loopback = match addr {
         SocketAddr::V4(ref a) => {
             a.ip().octets() == [127, 0, 0, 1]
@@ -89,6 +95,7 @@ fn main() {
         Box::new(ssl::TcpServer::new(&addr))
     };
     info!("Listening on {}", addr);
+    info!("Using matrix URL at {}", url);
     let mut events = EventLoop::new().unwrap();
     events.register(server.as_evented(), SERVER, EventSet::all(), PollOpt::edge()).unwrap();
     events.run(&mut IrcHandler{
