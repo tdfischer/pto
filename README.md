@@ -37,9 +37,9 @@ Once those two are installed, you can build PTO as follows:
 
   ``$ cargo build``
 
-PTO can then be ran:
+PTO can then be ran by specifying the domain to login at:
 
-  ``$ cargo run https://matrix.org/_matrix/client/api/v1/``
+  ``$ cargo run matrix.org``
 
 Specify a different URL to use a different matrix server.
 
@@ -47,7 +47,11 @@ Or the appropriate binary named ./target/\*/pto
 
 To use a different address+port, use:
 
-  ``$ cargo run https://matrix.org/_matrix/client/api/v1/ 0.0.0.0:4242
+  ``$ cargo run matrix.org 0.0.0.0:4242``
+
+You can also specify a full URL to use, such as when running on the same host:
+
+  ``$ cargo run http://localhost:8000/_matrix/ 0.0.0.0:4242``
 
 ## Configuration
 
