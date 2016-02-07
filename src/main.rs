@@ -18,12 +18,15 @@ extern crate hyper;
 extern crate mio;
 extern crate env_logger;
 extern crate openssl;
+extern crate c_ares;
+extern crate libc;
 #[macro_use]
 extern crate log;
 mod irc;
 mod matrix;
 mod bridge;
 mod ssl;
+mod dns;
 use mio::{EventLoop,Handler,Token,EventSet,PollOpt};
 use std::thread;
 use bridge::Bridge;
