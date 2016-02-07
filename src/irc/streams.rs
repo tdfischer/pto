@@ -104,12 +104,23 @@ impl Client {
     }
 
     pub fn welcome(&mut self, message: &str) -> io::Result<usize> {
+        let nickname = self.nickname.clone().unwrap();
         self.send(&Message {
             prefix: Some("pto".to_string()),
             command: Command::Numeric(1),
-            args: vec![message.to_string()],
-            suffix: None
-        })
+            args: vec![nickname.clone()],
+            suffix: Some(format!("Welcome to Perpetually Talking Online {}", nickname).to_string())
+        }).and(self.send(&Message {
+            prefix: Some("pto".to_string()),
+            command: Command::Numeric(2),
+            args: vec![nickname.clone()],
+            suffix: Some("Your host is running Perpetually Talking Online, the IRC frontend to Matrix.".to_string())
+        })).and(self.send(&Message {
+            prefix: Some("pto".to_string()),
+            command: Command::Numeric(5),
+            args: vec![nickname.clone(), "CHANTYPES=# NETWORK=matrix CHARSET=utf-8".to_string()],
+            suffix: Some("are supported by this server".to_string())
+        }))
     }
 
     pub fn send(&mut self, message: &Message) -> io::Result<usize> {
