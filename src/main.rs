@@ -74,10 +74,15 @@ fn main() {
     }.parse().unwrap();
 
     let domain =  env::args().nth(1).unwrap();
-    let url = match dns::probe_url(&*domain) {
+    let mut url = match dns::probe_url(&*domain) {
         Some(u) => u,
         None => hyper::Url::parse(&*domain).unwrap()
     };
+
+    if &*(url.path_mut().unwrap().iter().last().unwrap()) == "" {
+        let idx = url.path_mut().unwrap().len();
+        url.path_mut().unwrap().remove(idx-1);
+    }
 
     let is_loopback = match addr {
         SocketAddr::V4(ref a) => {
