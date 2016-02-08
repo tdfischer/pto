@@ -162,7 +162,7 @@ impl Event {
                     "presence" =>
                         EventData::Presence(PresenceEvent{
                             presence: mjson::string(json, "content.presence").to_string(),
-                            user: model::UserID::from_str(mjson::string(json, "content.user_id"))
+                            user: model::UserID::from_str(mjson::string(json, "content.sender"))
                         }),
                     e =>
                         EventData::Unknown(e.to_string(), json.clone())
@@ -185,7 +185,7 @@ impl Event {
                         }
                     },
                 "member" =>
-                    RoomEvent::Membership(model::UserID::from_str(mjson::string(json, "user_id")), MembershipAction::from_str(mjson::string(json, "content.membership"))),
+                    RoomEvent::Membership(model::UserID::from_str(mjson::string(json, "sender")), MembershipAction::from_str(mjson::string(json, "content.membership"))),
                 "history_visibility" =>
                     RoomEvent::HistoryVisibility(mjson::string(json, "content.history_visibility").to_string()),
                 "create" =>
@@ -201,13 +201,13 @@ impl Event {
                 "power_levels" =>
                     RoomEvent::PowerLevels,
                 "message" =>
-                    RoomEvent::Message(model::UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.body").to_string()),
+                    RoomEvent::Message(model::UserID::from_str(mjson::string(json, "sender")), mjson::string(json, "content.body").to_string()),
                 "name" =>
-                    RoomEvent::Name(model::UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.name").to_string()),
+                    RoomEvent::Name(model::UserID::from_str(mjson::string(json, "sender")), mjson::string(json, "content.name").to_string()),
                 "topic" =>
-                    RoomEvent::Topic(model::UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.topic").to_string()),
+                    RoomEvent::Topic(model::UserID::from_str(mjson::string(json, "sender")), mjson::string(json, "content.topic").to_string()),
                 "avatar" =>
-                    RoomEvent::Avatar(model::UserID::from_str(mjson::string(json, "user_id")), mjson::string(json, "content.url").to_string()),
+                    RoomEvent::Avatar(model::UserID::from_str(mjson::string(json, "sender")), mjson::string(json, "content.url").to_string()),
                 unknown_type => RoomEvent::Unknown(unknown_type.to_string(), json.clone())
             }
         )
