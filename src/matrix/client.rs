@@ -28,7 +28,8 @@ use matrix::model;
 #[derive(Debug)]
 pub enum ClientError {
     Http(hyper::Error),
-    UrlNotFound,
+    UrlNotFound(hyper::Url),
+    BadStatus(hyper::status::StatusCode),
     Json(json::ParserError)
 }
 
@@ -52,7 +53,9 @@ mod http {
                         ClientError::Json(err)
                     })
                 },
-                _ => Err(ClientError::UrlNotFound)
+                hyper::status::StatusCode::NotFound =>
+                    Err(ClientError::UrlNotFound(res.url.clone())),
+                s => Err(ClientError::BadStatus(s))
             }
         })
     }
