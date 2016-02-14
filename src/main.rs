@@ -67,6 +67,9 @@ impl Handler for IrcHandler {
 const SERVER: Token = Token(0);
 
 fn main() {
+    if env::var_os("RUST_LOG") == None {
+        env::set_var("RUST_LOG", "pto=info");
+    }
     env_logger::init().unwrap();
     let addr: SocketAddr = match env::args().nth(2) {
         Some(arg) => arg,
