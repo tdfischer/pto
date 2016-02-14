@@ -168,7 +168,7 @@ impl FromStr for Command {
     }
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub struct Message {
     pub prefix: Option<String>,
     pub command: Command,
@@ -179,6 +179,10 @@ pub struct Message {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io;
+    use std::fs;
+    use std::path;
+    use std::io::BufRead;
     #[test]
     fn classic_irc_session() {
         let msg = Message::from_str("USER nick 0 * hostname");
@@ -240,5 +244,34 @@ mod tests {
         assert_eq!(msg.command, Command::Privmsg);
         assert_eq!(msg.args, &["#héhé"]);
         assert_eq!(msg.suffix, Some("In a chan with utf8 in its name!".to_owned()));
+    }
+
+    fn load_log_fixture(fixture: &str) -> Vec<Message> {
+        let path = path::PathBuf::from("src/irc/test-fixtures/").join(fixture);
+        let file = fs::File::open(path.as_path()).unwrap();
+        let reader = io::BufReader::new(file);
+        let mut ret: Vec<Message> = vec![];
+        for line in reader.lines() {
+            ret.push(Message::from_str(&line.unwrap()));
+        }
+        ret
+    }
+
+    #[test]
+    fn identity_parse() {
+        let log = load_log_fixture("irssi.log");
+        let mut stringified: Vec<String> = vec![];
+        for ref message in &log {
+            stringified.push(message.to_string());
+        }
+
+        let mut reparsed: Vec<Message> = vec![];
+        for line in stringified {
+            reparsed.push(Message::from_str(&line));
+        }
+        let both = log.iter().zip(reparsed.iter());
+        for (ref original, ref regurgitated) in both {
+            assert_eq!(original, regurgitated);
+        }
     }
 }
