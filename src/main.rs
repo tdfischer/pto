@@ -21,6 +21,8 @@ extern crate openssl;
 extern crate c_ares;
 extern crate libc;
 #[macro_use]
+extern crate version;
+#[macro_use]
 extern crate log;
 mod irc;
 mod matrix;
@@ -71,6 +73,9 @@ fn main() {
         env::set_var("RUST_LOG", "pto=info");
     }
     env_logger::init().unwrap();
+
+    info!("Starting PTO {}", version!());
+
     let addr: SocketAddr = match env::args().nth(2) {
         Some(arg) => arg,
         None => "127.0.0.1:8001".to_string()
