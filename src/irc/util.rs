@@ -41,6 +41,10 @@ impl LineReader {
         let next_msg = stream.read(&mut buf);
         match next_msg {
             Ok(count) => {
+                if self.linebuf.len() + count >= 2048 {
+                    // FIXME: Return an error instead?
+                    panic!("Too much buffer used.");
+                }
                 self.linebuf.push_str(str::from_utf8(&buf[0..count]).unwrap());
                 self.split_next_line()
             }
@@ -72,3 +76,70 @@ impl LineReader {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path;
+    use std::fs;
+    use std::io;
+    use std::io::BufRead;
+    use std::io::Read;
+
+    #[test]
+    fn compare_to_bufreader() {
+        let mut line_lines: Vec<String> = vec![];
+        {
+            let path = path::PathBuf::from("src/irc/test-fixtures/").join("irssi.log");
+            let mut file = fs::File::open(path.as_path()).unwrap();
+            let mut line_reader = LineReader::new();
+            loop {
+                match line_reader.read(&mut file) {
+                    None => break,
+                    Some(line) =>
+                        line_lines.push(line)
+                }
+            }
+        }
+        let mut std_lines: Vec<String> = vec![];
+        {
+            let path = path::PathBuf::from("src/irc/test-fixtures/").join("irssi.log");
+            let file = fs::File::open(path.as_path()).unwrap();
+            let line_reader = io::BufReader::new(file);
+            for line in line_reader.lines() {
+                std_lines.push(line.unwrap());
+            }
+        }
+        assert_eq!(line_lines, std_lines);
+    }
+
+    struct ArrayReader<'a> {
+        d: &'a [u8],
+        pos: usize
+    }
+
+    impl<'a> Read for ArrayReader<'a> {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            let start = self.pos;
+            self.pos += buf.len();
+            let mut c = 0;
+            for (d, s) in buf.iter_mut().zip(self.d[start..self.pos].iter()) {
+                *d = *s;
+                c += 1;
+            }
+            Ok(c)
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn full_buffer() {
+        let mut data = ArrayReader {
+            d: &[0; 2048*10],
+            pos: 0
+        };
+        let mut reader = LineReader::new();
+        loop {
+            reader.read(&mut data as &mut Read);
+        }
+    }
+}
