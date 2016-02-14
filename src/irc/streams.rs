@@ -87,16 +87,6 @@ impl Client {
         self.nickname = Some(nickname);
     }
 
-    pub fn join(&mut self, channel: &str) -> io::Result<usize> {
-        let pfx = self.nickname.clone().unwrap();
-        self.send(&Message {
-            prefix: Some(pfx),
-            command: Command::Join,
-            args: vec![channel.to_string()],
-            suffix: None
-        })
-    }
-
     pub fn pong(&mut self) -> io::Result<usize> {
         self.send(&Message::from(Command::Pong))
     }

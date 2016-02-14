@@ -389,7 +389,7 @@ impl Bridge {
                             };
                         },
                         Command::Join => {
-                            self.client.join(&message.args[0]).expect("Could not send JOIN");
+                            // FIXME: Send no such channel message
                         },
                         Command::Ping => {
                             self.client.pong().expect("Could not send PONG");
