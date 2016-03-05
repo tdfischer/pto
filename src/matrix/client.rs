@@ -26,6 +26,7 @@ use matrix::events;
 use matrix::model;
 
 enum ApiVersion {
+    R0,
     V1,
     V2Alpha
 }
@@ -148,6 +149,22 @@ impl Client {
         }
     }
 
+    pub fn anon_login(&mut self) -> Result {
+        let mut query_args = HashMap::new();
+        query_args.insert("kind", "guest");
+        debug!("Logging in to matrix");
+        http::json(self.http.post(self.url(ApiVersion::R0, "register", &query_args)))
+            .and_then(|js| {
+                let obj = js.as_object().unwrap();
+                self.token = Some(AccessToken {
+                    access: obj.get("access_token").unwrap().as_string().unwrap().to_string(),
+                    refresh: String::new()
+                });
+                self.uid = Some(model::UserID::from_str(obj.get("user_id").unwrap().as_string().unwrap()));
+                Ok(())
+            })
+    }
+
     pub fn login(&mut self, username: &str, password: &str) -> Result {
         let mut d = BTreeMap::new();
         d.insert("user".to_string(), Json::String(username.to_string()));
@@ -172,6 +189,8 @@ impl Client {
         let mut ret = self.baseurl.clone();
         ret.path_mut().unwrap().append(&mut vec!["client".to_string()]);
         ret.path_mut().unwrap().append(&mut match version {
+            ApiVersion::R0 =>
+                vec!["r0".to_string()],
             ApiVersion::V1 =>
                 vec!["api".to_string(), "v1".to_string()],
             ApiVersion::V2Alpha =>
