@@ -21,7 +21,7 @@ use irc::streams::AsEvented;
 use mio;
 use mio::{EventLoop,Handler,Token,EventSet,PollOpt,Sender};
 use std::thread;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeSet};
 use std::io;
 use hyper;
 
@@ -74,7 +74,7 @@ struct Room {
     irc_name: Option<String>,
     canonical_alias: Option<String>,
     join_rules: Option<String>,
-    members: Vec<matrix::model::UserID>,
+    members: BTreeSet<matrix::model::UserID>,
     aliases: Vec<String>,
     pending_events: Vec<matrix::events::RoomEvent>,
     pending_sync: bool
@@ -92,34 +92,29 @@ impl Room {
     fn handle_part<F>(&mut self, user: matrix::model::UserID, mut callback: &mut F)
             where F: FnMut(irc::protocol::Message) {
 
-        if self.irc_name != None && self.members.contains(&user) {
+        let did_exist = self.members.remove(&user);
+        if self.has_irc_name() && did_exist {
             callback(irc::protocol::Message {
-                prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
+                prefix: Some(Room::userid_to_irc(&user)),
                 command: irc::protocol::Command::Part,
                 args: vec![self.irc_name.clone().unwrap()],
                 suffix: None
             });
         }
-
-        match self.members.iter().position(|u| u == &user) {
-            Some(idx) => {
-                self.members.remove(idx);
-            },
-            None => ()
-        }
     }
 
     fn handle_join<F>(&mut self, user: matrix::model::UserID, mut callback: &mut F)
             where F: FnMut(irc::protocol::Message) {
-        if self.irc_name != None && !self.members.contains(&user) {
+        let uid = Room::userid_to_irc(&user);
+        let was_added = self.members.insert(user);
+        if self.has_irc_name() && was_added {
             callback(irc::protocol::Message {
-                prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
+                prefix: Some(uid),
                 command: irc::protocol::Command::Join,
                 args: vec![self.irc_name.clone().unwrap()],
                 suffix: None
             });
         }
-        self.members.push(user);
     }
 
     fn new(id: matrix::model::RoomID) -> Self {
@@ -127,7 +122,7 @@ impl Room {
             id: id,
             canonical_alias: None,
             join_rules: None,
-            members: vec![],
+            members: BTreeSet::new(),
             pending_events: vec![],
             aliases: vec![],
             pending_sync: true,
@@ -143,23 +138,34 @@ impl Room {
         }
     }
 
-    pub fn finish_sync<F>(&mut self, my_uid: &matrix::model::UserID, mut callback: &mut F)
-            where F: FnMut(irc::protocol::Message) {
+    fn update_irc_name(&mut self, my_uid: &matrix::model::UserID) {
+        // First check if we have a local alias that matches our homeserver
         for a in &self.aliases {
             if a.ends_with(&*format!(":{}", my_uid.homeserver)) {
                 self.irc_name = Some(a.clone());
                 break;
             }
         }
+        // If we didn't get one from above, try some other heuristics
         if self.irc_name == None {
             self.irc_name = match self.canonical_alias {
+                // No canonical alias set. See if we can grab some other alias.
                 None => {
                     if self.aliases.len() == 0 {
-                        Some(format!("#{}:{}", self.id.id, self.id.homeserver))
+                        // A room with two people is probably a PM.
+                        // FIXME: Some other heuristics around private rooms, permissions, etc
+                        if self.members.len() == 2 {
+                            self.is_pm = true;
+                            Some(format!("{}", self.members.iter().nth(0).unwrap().nickname))
+                        } else {
+                            Some(format!("#{}:{}", self.id.id, self.id.homeserver))
+                        }
                     } else {
+                        // First one is good as any I guess!
                         Some(self.aliases[0].clone())
                     }
                 },
+                // There's a canonical_alias set, so use that
                 Some(ref a) => Some(a.clone())
             }
         }
@@ -185,7 +191,7 @@ impl Room {
 
     fn handle_with_alias<F>(&mut self, evt: matrix::events::RoomEvent, mut callback: &mut F)
             where F: FnMut(irc::protocol::Message) {
-        if self.irc_name != None {
+        if self.has_irc_name() {
             match evt {
                 matrix::events::RoomEvent::Membership(_, _) => (),
                 matrix::events::RoomEvent::Message(user, text) => {
@@ -198,7 +204,7 @@ impl Room {
                 },
                 matrix::events::RoomEvent::Topic(user, topic) => {
                     callback(irc::protocol::Message {
-                        prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
+                        prefix: Some(Room::userid_to_irc(&user)),
                         command: irc::protocol::Command::Topic,
                         args: vec![self.irc_name.clone().unwrap()],
                         suffix: Some(topic.clone())
