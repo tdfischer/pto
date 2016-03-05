@@ -162,7 +162,7 @@ impl Event {
                     "presence" =>
                         EventData::Presence(PresenceEvent{
                             presence: mjson::string(json, "content.presence").to_string(),
-                            user: model::UserID::from_str(mjson::string(json, "content.sender"))
+                            user: model::UserID::from_str(mjson::string(json, "sender"))
                         }),
                     e =>
                         EventData::Unknown(e.to_string(), json.clone())
