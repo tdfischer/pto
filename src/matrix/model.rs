@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 use std::fmt;
+use std::cmp;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct RoomID {
@@ -37,10 +38,28 @@ impl RoomID {
     }
 }
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct UserID {
     pub nickname: String,
     pub homeserver: String 
+}
+
+impl fmt::Display for UserID{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "@{}:{}", self.nickname, self.homeserver)
+    }
+}
+
+impl cmp::PartialOrd for UserID {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl cmp::Ord for UserID {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        format!("@{}:{}", self.nickname, self.homeserver).cmp(&format!("@{}:{}", other.nickname, other.homeserver))
+    }
 }
 
 impl UserID {
