@@ -72,30 +72,41 @@ pub struct AsyncPoll {
 }
 
 impl AsyncPoll {
+    fn do_room_events(events: &mut Vec<events::Event>, json: &Vec<Json>, id: &String) {
+        for ref evt in json {
+            trace!("<<< {}", evt);
+            let mut e = evt.as_object().unwrap().clone();
+            e.insert("room_id".to_string(), Json::String(id.clone()));
+            // FIXME: It'd be nice to return to the previous
+            // callback-based mechanism to avoid memory bloat
+            events.push(events::Event::from_json(&Json::Object(e)));
+        };
+    }
+
     pub fn send(self) -> Result<Vec<events::Event>> {
         http::json(self.http.get(self.url)).and_then(|json| {
-            let joined_rooms = mjson::path(&json, "rooms.join").as_object().unwrap();
+            trace!("Got JSON! {}", json.pretty());
             let mut ret: Vec<events::Event> = vec![];
+
+            let presence = mjson::path(&json, "presence.events").as_array().unwrap();
+            for ref p in presence {
+                ret.push(events::Event::from_json(&Json::Object(p.as_object().unwrap().clone())));
+            };
+
+            let joined_rooms = mjson::path(&json, "rooms.join").as_object().unwrap();
             for (id, r) in joined_rooms {
-                let room_state = mjson::array(r, "state.events");
-                for ref evt in room_state {
-                    trace!("<<< {}", evt);
-                    let mut e = evt.as_object().unwrap().clone();
-                    e.insert("room_id".to_string(), Json::String(id.clone()));
-                    // FIXME: It'd be nice to return to the previous
-                    // callback-based mechanism to avoid memory bloat
-                    ret.push(events::Event::from_json(&Json::Object(e)));
-                };
-                let timeline = mjson::array(r, "timeline.events");
-                for ref evt in timeline {
-                    trace!("<<< {}", evt);
-                    let mut e = evt.as_object().unwrap().clone();
-                    e.insert("room_id".to_string(), Json::String(id.clone()));
-                    // FIXME: It'd be nice to return to the previous
-                    // callback-based mechanism to avoid memory bloat
-                    ret.push(events::Event::from_json(&Json::Object(e)));
-                };
-            }
+                AsyncPoll::do_room_events(&mut ret, mjson::array(r, "state.events"), id);
+                AsyncPoll::do_room_events(&mut ret, mjson::array(r, "timeline.events"), id);
+                AsyncPoll::do_room_events(&mut ret, mjson::array(r, "account_data.events"), id);
+                AsyncPoll::do_room_events(&mut ret, mjson::array(r, "ephemeral.events"), id);
+            };
+
+            let next_token = mjson::string(&json, "next_batch").to_string();
+
+            ret.push(events::Event {
+                data: events::EventData::EndOfSync(next_token),
+                id: None
+            });
             Ok(ret)
         })
     }
@@ -179,8 +190,15 @@ impl Client {
         ret
     }
 
-    pub fn poll_async(&mut self) -> AsyncPoll {
-        let url = self.url(ApiVersion::V2Alpha, "sync", &HashMap::new());
+    pub fn sync(&mut self, token: Option<&str>) -> AsyncPoll {
+        let mut args = HashMap::new();
+        if let Some(next) = token {
+            args.insert("since", next);
+            args.insert("timeout", "5000");
+        } else {
+            args.insert("full_state", "true");
+        }
+        let url = self.url(ApiVersion::V2Alpha, "sync", &args);
         let mut http = hyper::client::Client::new();
         http.set_redirect_policy(hyper::client::RedirectPolicy::FollowAll);
         AsyncPoll {
@@ -210,34 +228,6 @@ impl Client {
         }.and_then(|response| {
             trace!(">>> {} {:?}", evt.to_json(), response);
             Ok(model::EventID::from_str(mjson::string(&response, "event_id")))
-        })
-    }
-
-    pub fn sync(&mut self) -> Result<Vec<events::Event>> {
-        debug!("Syncing...");
-        let mut args = HashMap::new();
-        args.insert("full_state", "true");
-        let url = self.url(ApiVersion::V2Alpha, "sync", &args);
-        http::json(self.http.get(url)).and_then(|js| {
-            println!("Got Sync JS {}", js.pretty());
-            let joined_rooms = mjson::path(&js, "rooms.join").as_object().unwrap();
-            let mut ret: Vec<events::Event> = vec![];
-            for (id, r) in joined_rooms {
-                let room_state = mjson::array(r, "state.events");
-                for ref evt in room_state {
-                    trace!("<<< {}", evt);
-                    let mut e = evt.as_object().unwrap().clone();
-                    e.insert("room_id".to_string(), Json::String(id.clone()));
-                    // FIXME: It'd be nice to return to the previous
-                    // callback-based mechanism to avoid memory bloat
-                    ret.push(events::Event::from_json(&Json::Object(e)));
-                };
-            }
-            ret.push(events::Event {
-                data: events::EventData::EndOfSync,
-                id: None
-            });
-            Ok(ret)
         })
     }
 }

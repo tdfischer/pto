@@ -38,6 +38,7 @@ pub struct Bridge {
     matrix: matrix::client::Client,
     rooms: HashMap<matrix::model::RoomID, Room>,
     seen_events: Vec<matrix::model::EventID>,
+    last_token: String
 }
 
 impl Handler for Bridge {
@@ -266,7 +267,8 @@ impl Bridge {
             client: client,
             matrix: matrix::client::Client::new(url),
             rooms: HashMap::new(),
-            seen_events: vec![]
+            seen_events: vec![],
+            last_token: String::new()
         }
     }
 
@@ -276,11 +278,12 @@ impl Bridge {
         events.run(self).unwrap();
     }
 
-    fn finish_sync<F>(&mut self, mut callback: &mut F)
+    fn finish_sync<F>(&mut self, mut callback: &mut F, token: String)
             where F: FnMut(irc::protocol::Message) {
         for (_, mut room) in &mut self.rooms {
             room.finish_sync(&self.matrix.uid.as_ref().unwrap(), callback);
-        }
+        };
+        self.last_token = token;
     }
 
     fn handle_matrix(&mut self, evt: matrix::events::Event) -> io::Result<usize> {
@@ -300,7 +303,7 @@ impl Bridge {
                         self.room_from_matrix(&room_id).handle_event(room_event, append_msg);
                     },
                     matrix::events::EventData::Typing(_) => (),
-                    matrix::events::EventData::EndOfSync => self.finish_sync(&mut append_msg),
+                    matrix::events::EventData::EndOfSync(token) => self.finish_sync(&mut append_msg, token),
                     _ => warn!("Unhandled {}", evt.data.type_str())
                 }
             }
@@ -327,7 +330,7 @@ impl Bridge {
 
     fn poll_matrix(&mut self, channel: mio::Sender<Event>) ->
         thread::JoinHandle<matrix::client::Result> {
-        let poll = self.matrix.poll_async();
+        let poll = self.matrix.sync(Some(&*self.last_token));
         thread::spawn(move|| {
             poll.send().and_then(|evts| {
                 for evt in evts {
@@ -341,7 +344,7 @@ impl Bridge {
 
     fn start_matrix(&mut self, channel: mio::Sender<Event>) ->
         matrix::client::Result {
-        self.matrix.sync().and_then(|events| {
+        self.matrix.sync(None).send().and_then(|events| {
             for e in events {
                 match self.handle_matrix(e) {
                     // FIXME: Return error

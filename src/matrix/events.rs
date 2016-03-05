@@ -67,7 +67,7 @@ pub enum EventData {
     Typing(TypingEvent),
     Presence(PresenceEvent),
     Unknown(String, Json),
-    EndOfSync
+    EndOfSync(String)
 }
 
 impl EventData {
@@ -102,7 +102,7 @@ impl EventData {
             &EventData::Presence(_) =>
                 "m.presence".to_string(),
             &EventData::Unknown(ref unknown_type, _) => unknown_type.clone(),
-            &EventData::EndOfSync => panic!("EndOfSync is a special value")
+            &EventData::EndOfSync(_) => panic!("EndOfSync is a special value")
         }
     }
 
