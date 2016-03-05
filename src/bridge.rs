@@ -434,7 +434,18 @@ impl Bridge {
                                             Ok(())
                                         }).expect("Could not login!");
                                 },
-                                _ => panic!("Username and/or password missing, and anonymous access isn't built yet.")
+                                (Some(_), None) => {
+                                    self.matrix.anon_login()
+                                        .and_then(|_| {
+                                            self.start_matrix(events.channel())
+                                        })
+                                        .and_then(|_| {
+                                            self.client.welcome("Welcome to Perpetually Talking Online!").unwrap();
+                                            debug!("Logged in a user");
+                                            Ok(())
+                                        }).expect("Could not login!");
+                                },
+                                _ => panic!("Username missing, and anonymous access isn't built yet.")
                             };
                         },
                         Command::Join => {
