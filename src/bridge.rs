@@ -81,6 +81,14 @@ struct Room {
 }
 
 impl Room {
+    fn userid_to_irc(uid: &matrix::model::UserID) -> String {
+        format!("{}!{}@{}", uid.nickname, uid.nickname, uid.homeserver)
+    }
+
+    fn has_irc_name(&self) -> bool {
+        self.irc_name != None
+    }
+
     fn handle_part<F>(&mut self, user: matrix::model::UserID, mut callback: &mut F)
             where F: FnMut(irc::protocol::Message) {
 
