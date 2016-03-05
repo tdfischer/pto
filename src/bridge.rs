@@ -454,10 +454,15 @@ impl Bridge {
                             };
                             let evt = {
                                 let id = self.matrix.uid.clone().unwrap();
+                                let message_text = if message.suffix == None {
+                                    message.args[1].clone()
+                                } else {
+                                    message.suffix.unwrap()
+                                };
                                 matrix::events::EventData::Room(
                                     room_id,
                                     matrix::events::RoomEvent::Message(
-                                        id, message.suffix.unwrap()))
+                                        id, message_text))
                             };
                             self.seen_events.push(self.matrix.send(evt).expect("Could not send event"));
                         },
