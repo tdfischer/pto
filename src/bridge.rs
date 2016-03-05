@@ -77,7 +77,8 @@ struct Room {
     members: BTreeSet<matrix::model::UserID>,
     aliases: Vec<String>,
     pending_events: Vec<matrix::events::RoomEvent>,
-    pending_sync: bool
+    pending_sync: bool,
+    is_pm: bool
 }
 
 impl Room {
@@ -126,7 +127,8 @@ impl Room {
             pending_events: vec![],
             aliases: vec![],
             pending_sync: true,
-            irc_name: None
+            irc_name: None,
+            is_pm: false
         }
     }
 
@@ -169,24 +171,35 @@ impl Room {
                 Some(ref a) => Some(a.clone())
             }
         }
-        callback(irc::protocol::Message {
-            prefix: Some(format!("{}!{}@{}", my_uid.nickname, my_uid.nickname, my_uid.homeserver)),
-            command: irc::protocol::Command::Join,
-            args: vec![self.irc_name.clone().unwrap()],
-            suffix: None
-        });
-        let mut usernames: Vec<String> = vec![];
-        for u in &self.members {
-            usernames.push(format!("{}", u.nickname));
-        }
-        callback(irc::protocol::Message {
-            prefix: Some("pto".to_string()),
-            command: irc::protocol::Command::Numeric(353),
-            args: vec![my_uid.nickname.clone(), "@".to_string(), self.irc_name.clone().unwrap()],
-            suffix: Some(usernames.join(" "))
-        });
+    }
 
-        self.run_pending(callback);
+    pub fn finish_sync<F>(&mut self, my_uid: &matrix::model::UserID, mut callback: &mut F)
+            where F: FnMut(irc::protocol::Message) {
+        self.update_irc_name(my_uid);
+        if self.pending_sync {
+            if !self.is_pm {
+                // Send the initial join for the current user on this connection, now that we have an IRC friendly channel name
+                callback(irc::protocol::Message {
+                    prefix: Some(Room::userid_to_irc(my_uid)),
+                    command: irc::protocol::Command::Join,
+                    args: vec![self.irc_name.clone().unwrap()],
+                    suffix: None
+                });
+                // And then send the nicklist
+                let mut usernames: Vec<String> = vec![];
+                for u in &self.members {
+                    usernames.push(format!("{}", u.nickname));
+                }
+                callback(irc::protocol::Message {
+                    prefix: Some("pto".to_string()),
+                    command: irc::protocol::Command::Numeric(353),
+                    args: vec![my_uid.nickname.clone(), "@".to_string(), self.irc_name.clone().unwrap()],
+                    suffix: Some(usernames.join(" "))
+                });
+            }
+            self.run_pending(callback);
+            self.pending_sync = false;
+        }
     }
 
     fn handle_with_alias<F>(&mut self, evt: matrix::events::RoomEvent, mut callback: &mut F)
@@ -195,12 +208,31 @@ impl Room {
             match evt {
                 matrix::events::RoomEvent::Membership(_, _) => (),
                 matrix::events::RoomEvent::Message(user, text) => {
-                    callback(irc::protocol::Message {
-                        prefix: Some(format!("{}!{}@{}", user.nickname, user.nickname, user.homeserver)),
-                        command: irc::protocol::Command::Privmsg,
-                        args: vec![self.irc_name.clone().unwrap()],
-                        suffix: Some(text)
-                    });
+                    if self.is_pm {
+                        trace!("Sending PM {} from {} to {:?}", text, user, self.irc_name);
+                        if self.irc_name == Some(user.nickname.clone()) {
+                            callback(irc::protocol::Message {
+                                prefix: Some(Room::userid_to_irc(&user)),
+                                command: irc::protocol::Command::Privmsg,
+                                args: vec![self.irc_name.clone().unwrap()],
+                                suffix: Some(text)
+                            });
+                        } else {
+                            callback(irc::protocol::Message {
+                                prefix: None,
+                                command: irc::protocol::Command::Privmsg,
+                                args: vec![self.irc_name.clone().unwrap()],
+                                suffix: Some(text)
+                            });
+                        }
+                    } else {
+                        callback(irc::protocol::Message {
+                            prefix: Some(Room::userid_to_irc(&user)),
+                            command: irc::protocol::Command::Privmsg,
+                            args: vec![self.irc_name.clone().unwrap()],
+                            suffix: Some(text)
+                        });
+                    }
                 },
                 matrix::events::RoomEvent::Topic(user, topic) => {
                     callback(irc::protocol::Message {
