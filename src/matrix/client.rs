@@ -75,7 +75,9 @@ pub struct AsyncPoll {
 impl AsyncPoll {
     fn do_room_events(events: &mut Vec<events::Event>, json: &Vec<Json>, id: &String) {
         for ref evt in json {
-            trace!("<<< {}", evt);
+            if cfg!(raw_logs) {
+                trace!("<<< {}", evt);
+            }
             let mut e = evt.as_object().unwrap().clone();
             e.insert("room_id".to_string(), Json::String(id.clone()));
             // FIXME: It'd be nice to return to the previous
@@ -245,7 +247,9 @@ impl Client {
             },
             _ => panic!("Don't know where to send {}", evt.to_json())
         }.and_then(|response| {
-            trace!(">>> {} {:?}", evt.to_json(), response);
+            if cfg!(raw_logs) {
+                trace!(">>> {} {:?}", evt.to_json(), response);
+            }
             Ok(model::EventID::from_str(mjson::string(&response, "event_id")))
         })
     }

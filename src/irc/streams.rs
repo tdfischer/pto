@@ -71,7 +71,9 @@ impl Client {
     pub fn read_message(&mut self) -> Option<Message> {
         match self.line_reader.read(&mut self.stream) {
             Some(line) => {
-                trace!("<< {}", line);
+                if cfg!(raw_logs) {
+                    trace!("<<< {}", line);
+                }
                 let stripped = &line;
                 if stripped.len() == 0 {
                     None
@@ -112,7 +114,9 @@ impl Client {
     }
 
     pub fn send(&mut self, message: &Message) -> io::Result<usize> {
-        trace!(">>> {}", message.to_string());
+        if cfg!(raw_logs) {
+            trace!(">>> {}", message.to_string());
+        }
         self.stream.write(&message.to_string().as_bytes())
             .and(self.stream.write("\r\n".as_bytes()))
     }

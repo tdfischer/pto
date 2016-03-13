@@ -13,3 +13,6 @@ openssl = '0.7.5'
 c-ares = '*'
 libc = '*'
 version = '*'
+
+[features]
+raw_logs = []
