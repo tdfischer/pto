@@ -172,6 +172,15 @@ impl Event {
     }
 
     fn from_room_json(event_type: &str, json: &Json) -> EventData {
+
+        if mjson::path(json, "content").as_object().unwrap().len() == 0 {
+            // probably a redaction.
+            return EventData::Room(
+                model::RoomID::from_str(mjson::string(json, "room_id")),
+                RoomEvent::Unknown(event_type.to_string(), json.clone())
+            )
+        }
+
         EventData::Room(
             model::RoomID::from_str(mjson::string(json, "room_id")),
             match event_type {

@@ -17,6 +17,7 @@
 use rustc_serialize::json::{Json,Array};
 
 pub fn path<'a>(json: &'a Json, path: &str) -> &'a Json {
+    // why not just use json.find_path ooi? -matthew
     let parts = path.split(".");
     let mut cur = json;
     for p in parts {
@@ -38,6 +39,6 @@ pub fn array<'a>(json: &'a Json, path: &str) -> &'a Array {
 pub fn string<'a>(json: &'a Json, path: &str) -> &'a str{
     match self::path(json, path).as_string() {
         Some(p) => p,
-        None => panic!("{} in {} is not an array", path, json.pretty())
+        None => panic!("{} in {} is not a string", path, json.pretty())
     }
 }
