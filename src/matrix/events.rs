@@ -126,6 +126,7 @@ impl EventData {
 
 #[derive(Debug)]
 pub struct Event {
+    pub age: u64,
     pub id: Option<model::EventID>,
     pub data: EventData
 }
@@ -138,6 +139,10 @@ pub struct PresenceEvent {
 
 impl Event {
     pub fn from_json(json: &Json) -> Self {
+        let age = match json.find_path(&["unsigned", "age"]) {
+            Some(a) => a.as_u64().unwrap(),
+            None => 0
+        };
         let tokens: Vec<&str> = mjson::string(json, "type").split(".").collect();
         let id = match json.as_object().unwrap().get("event_id") {
             Some(i) => Some(model::EventID::from_str(i.as_string().unwrap())),
@@ -145,11 +150,13 @@ impl Event {
         };
         if tokens[0] != "m" {
             Event {
+                age: age,
                 id: id,
                 data: EventData::Unknown(json.as_object().unwrap().get("type").unwrap().as_string().unwrap().to_string(), json.clone()),
             }
         } else {
             Event {
+                age: age,
                 id: id,
                 data: match tokens[1] {
                     "room" =>

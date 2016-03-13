@@ -107,6 +107,7 @@ impl AsyncPoll {
             let next_token = mjson::string(&json, "next_batch").to_string();
 
             ret.push(events::Event {
+                age: 0,
                 data: events::EventData::EndOfSync(next_token),
                 id: None
             });
