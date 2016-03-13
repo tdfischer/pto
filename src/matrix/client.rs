@@ -88,7 +88,9 @@ impl AsyncPoll {
 
     pub fn send(self) -> Result<Vec<events::Event>> {
         http::json(self.http.get(self.url)).and_then(|json| {
-            trace!("Got JSON! {}", json.pretty());
+            if cfg!(raw_logs) {
+                trace!("Got JSON! {}", json.pretty());
+            }
             let mut ret: Vec<events::Event> = vec![];
 
             let presence = mjson::path(&json, "presence.events").as_array().unwrap();

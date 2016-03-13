@@ -212,7 +212,6 @@ impl Room {
                 matrix::events::RoomEvent::Membership(_, _) => (),
                 matrix::events::RoomEvent::Message(user, text) => {
                     if self.is_pm {
-                        trace!("Sending PM {} from {} to {:?}", text, user, self.irc_name);
                         if self.irc_name == Some(user.nickname.clone()) {
                             callback(irc::protocol::Message {
                                 prefix: Some(Room::userid_to_irc(&user)),
@@ -277,7 +276,9 @@ impl Room {
             },
             matrix::events::RoomEvent::Unknown(unknown_type, json) => {
                 warn!("Unknown room event {}", unknown_type);
-                trace!("raw event: {:?}", json);
+                if cfg!(raw_logs) {
+                    trace!("raw event: {:?}", json);
+                }
             }
             _ => self.handle_with_alias(evt, &mut callback, age)
         };
