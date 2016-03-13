@@ -62,8 +62,12 @@ impl Server for SslServer {
          match self.listener.accept() {
              Ok(None) => None,
              Ok(Some((socket, _))) => {
-                 let ssl = SslStream::accept(&self.ssl, socket).expect("Could not construct SSL stream");
-                 Some(Client::new(Box::new(ssl)))
+                 // FIXME: This should be in a separate thread to protect against openssl vulns
+                 match SslStream::accept(&self.ssl, socket) {
+                     Ok(ssl) =>
+                         Some(Client::new(Box::new(ssl))),
+                    _ => None
+                 }
              },
              Err(e) => panic!(e),
          }
