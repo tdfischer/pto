@@ -76,7 +76,7 @@ struct Room {
     join_rules: Option<String>,
     members: BTreeSet<matrix::model::UserID>,
     aliases: Vec<String>,
-    pending_events: Vec<matrix::events::RoomEvent>,
+    pending_events: Vec<(u64, matrix::events::RoomEvent)>,
     pending_sync: bool,
     is_pm: bool
 }
@@ -135,8 +135,11 @@ impl Room {
     fn run_pending<F>(&mut self, mut callback: &mut F)
             where F: FnMut(irc::protocol::Message) {
         assert!(self.pending_sync);
-        while let Some(evt) = self.pending_events.pop() {
-            self.handle_with_alias(evt, callback);
+        self.pending_events.sort_by(|a, b|{
+            a.0.cmp(&b.0)
+        });
+        while let Some((age, evt)) = self.pending_events.pop() {
+            self.handle_with_alias(evt, callback, age);
         }
     }
 
@@ -202,7 +205,7 @@ impl Room {
         }
     }
 
-    fn handle_with_alias<F>(&mut self, evt: matrix::events::RoomEvent, mut callback: &mut F)
+    fn handle_with_alias<F>(&mut self, evt: matrix::events::RoomEvent, mut callback: &mut F, age: u64)
             where F: FnMut(irc::protocol::Message) {
         if self.has_irc_name() {
             match evt {
@@ -247,11 +250,11 @@ impl Room {
                 }
             }
         } else {
-            self.pending_events.push(evt);
+            self.pending_events.push((age, evt));
         }
     }
 
-    fn handle_event<F>(&mut self, evt: matrix::events::RoomEvent, mut callback: F)
+    fn handle_event<F>(&mut self, evt: matrix::events::RoomEvent, mut callback: F, age: u64)
             where F: FnMut(irc::protocol::Message) {
         match evt {
             matrix::events::RoomEvent::CanonicalAlias(name) => {
@@ -276,7 +279,7 @@ impl Room {
                 warn!("Unknown room event {}", unknown_type);
                 trace!("raw event: {:?}", json);
             }
-            _ => self.handle_with_alias(evt, &mut callback)
+            _ => self.handle_with_alias(evt, &mut callback, age)
         };
     }
 }
@@ -346,7 +349,7 @@ impl Bridge {
                 };
                 match evt.data {
                     matrix::events::EventData::Room(room_id, room_event) => {
-                        self.room_from_matrix(&room_id).handle_event(room_event, append_msg);
+                        self.room_from_matrix(&room_id).handle_event(room_event, append_msg, evt.age);
                     },
                     matrix::events::EventData::Typing(_) => (),
                     matrix::events::EventData::EndOfSync(token) => self.finish_sync(&mut append_msg, token),
